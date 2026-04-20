@@ -8,3 +8,5 @@ El otro endpoint usado para transformar una de las columans ha sido:
     url = "https://api.themoviedb.org/3/genre/movie/list"
 Es para trasnformar los generos de las pelicuals de numeros a letras
 He limpiado los datos, los he trasnformado convenientemente y los he subido a PostGreSQL y creado un csv local por si acaso. 
+
+hay que descargar ollama y ollama pull nomic-embed-text para los embedings, se hace automaticamente por ollama
