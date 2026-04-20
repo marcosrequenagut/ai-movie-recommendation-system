@@ -7,6 +7,11 @@ from connection import get_connection
 conn = get_connection()
 cur = conn.cursor()
 
+# Create the table using the schema.sql file
+with open("db\schema.sql", "r") as f:
+    cur.execute(f.read())
+    conn.commit()
+
 # Load the CSV
 df = pd.read_csv("data_procesing\movies_information_with_embeddings.csv")
 
@@ -15,14 +20,16 @@ df["Embedding"] = df["Embedding"].apply(ast.literal_eval)
 
 # Insert data into the database
 for i, row in df.iterrows():
+    embedding = str(row["Embedding"])
+
     cur.execute("""
-        INSERT INTO movies_with_embeddings (id, title, content, embedding)
+        INSERT INTO movies (id, title, content, embedding)
         VALUES (%s, %s, %s, %s)""",
         (
             row["id"],
             row["title"],
             row["content"],
-            row["Embedding"]
+            embedding
         ))
     
     if i % 100 == 0:

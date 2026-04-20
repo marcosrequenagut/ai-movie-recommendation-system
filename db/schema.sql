@@ -5,8 +5,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS movies (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    description TEXT,
-    embedding vector(1536)
+    content TEXT,
+    embedding vector(768)
 );
 
 
