@@ -1,40 +1,26 @@
-from app.db.connection import get_connection
-from app.embeddings.get_embeding import get_embedding
+from db.connection import get_connection
+from embeddings.service import embed_query
+from repositories.movie_repository import search_movies_by_embedding
+
 
 def get_recommended_movies(query, top_k=10, allowed_ids=None):
 
+    # 1. Conection
     conn = get_connection()
-    cur = conn.cursor()
 
-    query_embedding = get_embedding(query)
+    try:
+        # 2. Embedding
+        query_embedding = embed_query(query)
 
-    # Implementation for fetching recommended movies based on embedding similarity
-    sql_query = """
-        SELECT id, title, content,
-               embedding <-> %s::vector AS cosine_distance,
-                genres
-        FROM movies
-    """
+        # 3. Search
+        results = search_movies_by_embedding(
+            conn=conn,
+            embedding=query_embedding,
+            allowed_ids=allowed_ids,
+            top_k=top_k
+        )
 
-    params = [query_embedding]
+        return results
 
-    if allowed_ids:
-        sql_query += " WHERE id = ANY(%s)"
-        params.append(allowed_ids)
-
-    sql_query += """
-        ORDER BY cosine_distance
-        LIMIT %s
-    """
-
-    params.append(top_k)
-
-    cur.execute(sql_query, params)
-
-    results = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return results
-
+    finally:
+        conn.close()
