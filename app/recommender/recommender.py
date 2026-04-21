@@ -1,11 +1,13 @@
-from db.connection import get_connection
-from embeddings.get_embeding import get_embedding
-
-cur = get_connection().cursor()
+from app.db.connection import get_connection
+from app.embeddings.get_embeding import get_embedding
 
 def get_recommended_movies(query, top_k=10):
 
-    query_embedding = str(get_embedding(query))
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # query_embedding = str(get_embedding(query))
+    query_embedding = get_embedding(query)
 
     # Implementation for fetching recommended movies based on embedding similarity
     sql_query = """
@@ -18,5 +20,10 @@ def get_recommended_movies(query, top_k=10):
     
     cur.execute(sql_query, (query_embedding, top_k))
 
-    return cur.fetchall()
+    results = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    
+    return results
 
