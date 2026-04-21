@@ -1,19 +1,19 @@
 import pandas as pd
 import ast
 
-from app.db.connection import get_connection
+from connection import get_connection
 
 # Conection to PostgreSQL database
 conn = get_connection()
 cur = conn.cursor()
 
 # Create the table using the schema.sql file
-with open("db\schema.sql", "r") as f:
+with open("app\db\schema.sql", "r") as f:
     cur.execute(f.read())
     conn.commit()
 
 # Load the CSV
-df = pd.read_csv("data_procesing\movies_information_with_embeddings.csv")
+df = pd.read_csv("data_procesing\data\movies_information_with_embeddings_all.csv")
 
 # Transform the "Embedding" column from string to list
 df["Embedding"] = df["Embedding"].apply(ast.literal_eval)
