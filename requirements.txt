@@ -1,1 +1,14 @@
 pandas==2.2.0
+uuid_utils==0.14.1
+uvicorn==0.39.0
+watchfiles==1.1.1
+wcwidth==0.6.0
+websocket-client==1.9.0
+websockets==15.0.1
+yarl==1.22.0
+zipp==3.23.1
+zstandard==0.25.0
+fastapi
+psycopg2-binary
+pgvector
+requests

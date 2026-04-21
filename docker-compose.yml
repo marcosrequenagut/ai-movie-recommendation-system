@@ -1,41 +1,27 @@
 version: "3.9"
 
 services:
-
   db:
     image: pgvector/pgvector:pg15
-    container_name: movie-postgres
-    restart: always
+    container_name: movies_postgres
     environment:
+      POSTGRES_DB: movies_db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: movies_db
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - backend
+      - postgres_data:/var/lib/postgresql/data
 
   api:
-    build: .
-    container_name: movie-api
-    restart: always
+    build:
+    container_name: movies_api
     depends_on:
       - db
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: admin
-      DB_PASSWORD: admin
-      DB_NAME: movies_db
     ports:
       - "8000:8000"
-    networks:
-      - backend
+    environment:
+      DATABASE_URL: postgresql://admin:admin@db:5432/movies_db
 
-volumes:
-  pgdata:
-
-networks:
-  backend:
+volumnes:
+  postgres_data

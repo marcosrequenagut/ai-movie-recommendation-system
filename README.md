@@ -30,3 +30,29 @@ docker run --name movie-postgres \
   -d pgvector/pgvector:pg15
 
 Los datos se cogen de una api y se meten en postgree usando el codigo db/connecion.py. Para ello esos datos se han guardado en local como csv, se han leido otra vez y se han metido en postgree. Se podría hacer más directo, leyendo directamente de la api y guardadno en postgre directamente.
+
+tipos de commit para tenerlo todo ordenado
+
+feat(api): add recommendation endpoint
+fix(db): fix vector type mismatch
+refactor(recommender): improve query structure
+chore(docker): add postgres service
+
+CADA VEZ QUE SE REINICIE LA APP HABRÁ QUE HACER:
+
+
+docker run --name movies_postgree \
+  -e POSTGRES_DB=movies_db \
+  -e POSTGRES_USER=admin \
+  -e POSTGRES_PASSWORD=admin \
+  -p 5432:5432 \
+  -d pgvector/pgvector:pg15
+
+# 3. Esperar unos segundos a que PostgreSQL inicie
+sleep 5
+
+# 4. Habilitar la extensión (opcional, ya viene preinstalada)
+docker exec -it movies_postgree psql -U admin -d movies_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 5. Verificar que funciona
+docker exec -it movies_postgree psql -U admin -d movies_db -c "SELECT * FROM pg_extension WHERE extname='vector';"
