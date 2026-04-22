@@ -7,7 +7,7 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     sql_query = """
         SELECT id, title, content,
                embedding <-> %s::vector AS distance,
-               genres
+               genres, overview, release_year, vote_average, popularity
         FROM movies
     """
 

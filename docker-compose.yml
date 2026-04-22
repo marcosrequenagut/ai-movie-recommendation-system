@@ -26,7 +26,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-      - ./app/scripts/init-ollama.sh:/init-ollama.sh 
+      - ./infra/ollama/init-ollama.sh:/init-ollama.sh 
     entrypoint: ["/bin/sh", "/init-ollama.sh"]       
     networks:
       - backend

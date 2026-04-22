@@ -4,6 +4,7 @@ from typing import List
 
 from app.recommender.recommender import get_recommended_movies
 from app.service.filter import FilterRequest, filter_movies
+from app.service.explainer import generate_explanation
 from app.db.connection import get_connection
 
 router = APIRouter()
@@ -46,6 +47,29 @@ def recommend(request: RecommendationRequest):
 
     conn.close()
 
+    # Introduce the explaination of the most recommended movie using a LLM called Ollama
+    score_most_recommended_movie = 0
+    for r in results:
+        score = float(r[3])
+        if score > score_most_recommended_movie:
+            # Create a metadata using the most recommended movie
+            dict_metadata = {
+                "title": r[1],
+                "genres": r[4],
+                "overview": r[5],
+                "release_year": r[6],
+                "vote_average": r[7],
+                "popularity": r[8],
+            }
+
+            score_most_recommended_movie = score
+
+    explanation = generate_explanation(
+        query = request.query,
+        movie = dict_metadata["title"],
+        metadata = dict_metadata
+    )
+
     return {
         "query": request.query,
         "results": [
@@ -56,5 +80,6 @@ def recommend(request: RecommendationRequest):
                 "score": float(r[3]),
                 "genres": r[4]
             } for r in results
-        ]
+        ],
+        "explanation": explanation
     }
