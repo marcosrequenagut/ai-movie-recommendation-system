@@ -68,5 +68,6 @@ python -m app.scripts.fill_postgree_db
 
 # Modelos a descargar para que funcione la app:
 docker exec -it ollama ollama pull tinyllama
+docker exec -it ollama ollama pull mistral (este tarda como 10 minutos porque es muy grande)
 docker exec -it ollama ollama pull nomic-embed-text:latest
-docker exec -it llama ollama list para comprobar si ambos modelos se han descarrfo bien
+docker exec -it ollama ollama list para comprobar si ambos modelos se han descarrfo bien

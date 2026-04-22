@@ -3,7 +3,7 @@ from ..embeddings.service import embed_query
 from ..repositories.movie_repository import search_movies_by_embedding
 
 
-def get_recommended_movies(query, top_k=10, allowed_ids=None):
+def get_recommended_movies(query, top_k=5, allowed_ids=None):
 
     # 1. Conection
     conn = get_connection()
