@@ -4,6 +4,7 @@ from typing import List
 
 from app.recommender.recommender import get_recommended_movies
 from app.service.filter import FilterRequest, filter_movies
+from app.db.connection import get_connection
 
 router = APIRouter()
 
@@ -25,13 +26,16 @@ def health():
 @router.post("/recommend")
 def recommend(request: RecommendationRequest):
 
+    conn = get_connection()
+
     filtered_ids = filter_movies(
         FilterRequest(
             genres=request.genres,
             min_rating=request.min_rating,
             year_from=request.year_from,
             year_to=request.year_to
-        )
+        ),
+        conn
     )
 
     results = get_recommended_movies(
@@ -39,6 +43,8 @@ def recommend(request: RecommendationRequest):
         top_k=request.top_k,
         allowed_ids=filtered_ids
     )
+
+    conn.close()
 
     return {
         "query": request.query,

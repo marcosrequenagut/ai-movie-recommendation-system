@@ -1,7 +1,7 @@
 import pandas as pd
 import ast
 
-from connection import get_connection
+from app.db.connection import get_connection
 
 # Conection to PostgreSQL database
 conn = get_connection()

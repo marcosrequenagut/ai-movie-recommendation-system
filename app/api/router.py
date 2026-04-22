@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from routes.recommendation import router as recommendation_router
-from routes.filter import router as filter_router
+from .routes.recommendation import router as recommendation_router
+from .routes.filter import router as filter_router
 
 api_router = APIRouter()
 

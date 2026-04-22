@@ -46,6 +46,7 @@ docker run --name movies_postgree \
   -e POSTGRES_USER=admin \
   -e POSTGRES_PASSWORD=admin \
   -p 5432:5432 \
+  -v ${PWD}/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql \
   -d pgvector/pgvector:pg15
 
 # 3. Esperar unos segundos a que PostgreSQL inicie
@@ -56,3 +57,11 @@ docker exec -it movies_postgree psql -U admin -d movies_db -c "CREATE EXTENSION 
 
 # 5. Verificar que funciona
 docker exec -it movies_postgree psql -U admin -d movies_db -c "SELECT * FROM pg_extension WHERE extname='vector';"
+
+Primera vez que inicio el contendor:
+
+docker compose build --no-cache
+docker compose up 
+python -m app.scripts.fill_postgree_db
+
+# Lo unico que me funcion para ejecutar python es esto:  python -m app.scripts.fill_postgree_db

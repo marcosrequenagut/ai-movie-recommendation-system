@@ -1,9 +1,11 @@
 version: "3.9"
 
 services:
+
   db:
     image: pgvector/pgvector:pg15
-    container_name: movies_postgres
+    container_name: movies_postgree
+    restart: always
     environment:
       POSTGRES_DB: movies_db
       POSTGRES_USER: admin
@@ -11,17 +13,48 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+      - ./app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./app/scripts/init-ollama.sh:/init-ollama.sh 
+    entrypoint: ["/bin/sh", "/init-ollama.sh"]       
+    networks:
+      - backend
 
   api:
-    build:
-    container_name: movies_api
+    build: .
+    container_name: movie-api
+    restart: always
     depends_on:
       - db
+      - ollama
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_NAME: movies_db
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://admin:admin@db:5432/movies_db
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - backend
 
-volumnes:
-  postgres_data
+volumes:
+  pgdata:
+  ollama_data:
+
+networks:
+  backend:

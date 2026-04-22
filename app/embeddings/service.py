@@ -1,4 +1,4 @@
-from client import get_embedding
+from .client import get_embedding
 
 def embed_query(query: str):
     # preprocessing
