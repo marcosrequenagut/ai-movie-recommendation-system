@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS movies (
     genres TEXT[],
     weighted_rating FLOAT,
     release_year INT,
-    embedding vector(768)
+    embedding vector(768),
+    overview TEXT
 );
 
 

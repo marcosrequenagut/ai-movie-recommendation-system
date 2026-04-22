@@ -65,3 +65,8 @@ docker compose up
 python -m app.scripts.fill_postgree_db
 
 # Lo unico que me funcion para ejecutar python es esto:  python -m app.scripts.fill_postgree_db
+
+# Modelos a descargar para que funcione la app:
+docker exec -it ollama ollama pull tinyllama
+docker exec -it ollama ollama pull nomic-embed-text:latest
+docker exec -it llama ollama list para comprobar si ambos modelos se han descarrfo bien

@@ -3,7 +3,7 @@ import requests
 OLLAMA_URL = "http://ollama:11434/api/generate"
 
 def generate_explanation(query: str, movie: str, metadata: dict=None):
-    promt = """
+    prompt = f"""
     You are a movie recommendation assistant.
 
     Your task is to clearly explain why the movie was recommended to the user.
@@ -18,7 +18,7 @@ def generate_explanation(query: str, movie: str, metadata: dict=None):
     {metadata}
 
     Instructions:
-    - Write a short and natual explanation {2-4 sentences}.
+    - Write a short and natual explanation (2-4 sentences).
     - Explicity content user's query with the movie's characteristics.
     - Use ONLY the provided metadata to justify the recommendation.
     - Highlight specific similarities (e.g., genre, them, mod, actors, plot elements).
@@ -31,12 +31,14 @@ def generate_explanation(query: str, movie: str, metadata: dict=None):
     response = requests.post(
         OLLAMA_URL,
         json={
-            "model": "llama3",
-            "prompt": promt,
+            "model": "tinyllama",
+            "prompt": prompt,
             "stream": False
         }
     )
 
-    response.raise_for_status
+    response.raise_for_status()
 
-    return response.json()["response"]
+    data = response.json()
+
+    return data.get("response", "")

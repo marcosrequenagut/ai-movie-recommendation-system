@@ -25,9 +25,8 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
-      - ./infra/ollama/init-ollama.sh:/init-ollama.sh 
-    entrypoint: ["/bin/sh", "/init-ollama.sh"]       
+      - ollama_data:/root/.ollama   
+    command: ["serve"] 
     networks:
       - backend
 

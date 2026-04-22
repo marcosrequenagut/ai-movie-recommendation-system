@@ -31,8 +31,8 @@ for i, row in df.iterrows():
     genres = ast.literal_eval(row["genres"]) # Conver a string of array in just an array
 
     cur.execute("""
-        INSERT INTO movies (id, title, content, embedding, adult, original_language, popularity, release_date, release_year, vote_average, genres, weighted_rating)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        INSERT INTO movies (id, title, content, embedding, adult, original_language, popularity, release_date, release_year, vote_average, genres, weighted_rating, overview)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (
             row["id"],
             row["title"],
@@ -45,7 +45,8 @@ for i, row in df.iterrows():
             row["release_year"],
             row["vote_average"],
             genres,
-            row["weighted_rating"]
+            row["weighted_rating"],
+            row["overview"],
         ))
     
     if i % 100 == 0:

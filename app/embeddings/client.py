@@ -14,4 +14,11 @@ def get_embedding(text: str):
         }
     )
 
-    return response.json()["embedding"]
+    response.raise_for_status()  # 👈 clave para debug real
+
+    data = response.json()
+
+    if "embedding" not in data:
+        raise ValueError(f"Ollama error: {data}")
+
+    return data["embedding"]
