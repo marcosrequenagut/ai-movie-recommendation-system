@@ -46,4 +46,4 @@ def decide_action(user_input):
     print("This is the result of the response: ", result)
     print("---END----")
 
-    return json.loads(response.json()["response"])
+    return result

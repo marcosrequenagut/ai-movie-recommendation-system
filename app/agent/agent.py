@@ -24,4 +24,4 @@ def run_agent(user_input):
         return {"explanation": results}
 
     if action == "clarify":
-        return {"response": "I’m not sure I understood your request. Do you want a movie recommendation or an explanation about a movie? Please rephrase your question."}
+        return {"type": "clarify", "response": "I’m not sure I understood your request. Do you want a movie recommendation or an explanation about a movie? Please rephrase your question."}
