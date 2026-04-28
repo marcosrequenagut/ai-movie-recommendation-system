@@ -1,7 +1,8 @@
 import requests
 import json
 
-OLLAMA_URL = "http://ollama:11434/api/generate"
+#OLLAMA_URL = "http://ollama:11434/api/generate"
+OLLAMA_URL = "http://localhost:11434/api/generate"
 
 def decide_action(user_input):
     prompt = f"""

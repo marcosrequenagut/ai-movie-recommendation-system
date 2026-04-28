@@ -5,7 +5,7 @@ services:
   db:
     image: pgvector/pgvector:pg15
     container_name: movies_postgree
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: movies_db
       POSTGRES_USER: admin
@@ -21,7 +21,7 @@ services:
   ollama:
     image: ollama/ollama
     container_name: ollama
-    restart: always
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
@@ -33,7 +33,7 @@ services:
   api:
     build: .
     container_name: movie-api
-    restart: always
+    restart: unless-stopped
     depends_on:
       - db
       - ollama

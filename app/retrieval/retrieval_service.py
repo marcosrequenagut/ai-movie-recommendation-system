@@ -3,7 +3,7 @@ from app.embeddings.service import embed_query
 from app.repositories.movie_repository import search_movies_by_embedding
 
 
-def retrieve_movies(query, top_k=5, allowed_ids=None):
+def retrieve_movies(query_embedding, top_k=5, allowed_ids=None):
 
     """
     Unic retrieval layer:
@@ -15,10 +15,8 @@ def retrieve_movies(query, top_k=5, allowed_ids=None):
     conn = get_connection()
 
     try:
-        # 2. Embedding
-        query_embedding = embed_query(query)
 
-        # 3. Search
+        # 2. Search
         results = search_movies_by_embedding(
             conn=conn,
             embedding=query_embedding,

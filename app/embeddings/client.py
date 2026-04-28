@@ -7,7 +7,8 @@ def get_embedding(text: str):
     """
 
     response = requests.post(
-        "http://ollama:11434/api/embeddings",
+        #"http://ollama:11434/api/embeddings",
+        "http://localhost:11434/api/embeddings",
         json={
             "model": "nomic-embed-text",
             "prompt": text
