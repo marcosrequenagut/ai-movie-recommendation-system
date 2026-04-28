@@ -1,21 +1,38 @@
+from app.db.connection import get_connection
+from app.service.filter import filter_movies
+from app.service.filter import FilterRequest
 from ..embeddings.service import embed_query
 from ..retrieval.retrieval_service import retrieve_movies
 from ..recommender.ranking.ranking_service import rank_movies
 
-def recommend_pipeline(query, top_k=5, allowed_ids=None):
+def recommend_pipeline(query, top_k=5, filters=None):
 
-    # 1. Encoding the query into an embedding
-    query_embedding = embed_query(query)
+    conn =  get_connection()
 
-    # 2. Retrieval (candidates)
-    candidates = retrieve_movies(
-        query_embedding=query_embedding,
-        top_k=top_k,
-        allowed_ids=allowed_ids
-    )
+    try:
+        # 1. Apply filters
+        allowed_ids = None
+        if filters:
+            allowed_ids = filter_movies(
+                FilterRequest(**filters), conn
+            )
+            print("ALLOWED IDS DESPUÉS DE FILTRAR:", allowed_ids)
 
-    # Ranking (final decision)
-    ranked_movies = rank_movies(candidates)
+        # 2. Encoding the query into an embedding
+        query_embedding = embed_query(query)
 
-    # Return the top-K final movies
-    return ranked_movies[:top_k]
+        # 3. Retrieval (candidates)
+        candidates = retrieve_movies(
+            query_embedding=query_embedding,
+            top_k=top_k,
+            allowed_ids=allowed_ids
+        )
+
+        # 4. Ranking (final decision)
+        ranked_movies = rank_movies(candidates)
+
+        # Return the top-K final movies
+        return ranked_movies[:top_k]
+    
+    finally:
+        conn.close()

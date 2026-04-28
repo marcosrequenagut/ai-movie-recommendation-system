@@ -1,8 +1,5 @@
-from app.agent.tools import recommend_tool, explain_tool
 from app.agent.router_prompt import decide_action
 from app.agent.tools_registry import TOOLS
-from app.service.explainer import generate_explanation
-from app.service.recommendation_pipeline import recommend_pipeline
 
 def agent(user_input, filters=None, top_k=5):
 
@@ -22,13 +19,12 @@ def agent(user_input, filters=None, top_k=5):
     # 2. Tool selection
     tool = TOOLS[action]
 
-    # 3. Execution layer
-    if action == "recommend":
-        return tool(query, filters, top_k)
-    
-    elif tool == "explain":
-        return tool(
-            query = query,
-            movie = movie,
-            metadata = None
-        )
+    input_data = {
+        "query": query,
+        "filters": filters,
+        "top_k": top_k,
+        "movie": movie,
+        "metadata": None
+    }
+
+    return tool(input_data)

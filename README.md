@@ -102,120 +102,151 @@ docker exec -it ollama ollama list para comprobar si ambos modelos se han descar
 
 
 
-Estoy desarrollando un proyecto personal cuyo objetivo es aprender y experimentar con tecnologías relacionadas con sistemas de recomendación y agentes de IA. Quiero que actúes como un arquitecto de software senior especializado en IA y me ayudes a escalar el proyecto, mejorar su diseño y proponer nuevas funcionalidades y tecnologías (especialmente LangChain y LangGraph).
+PROJECT STATUS PROMPT — Movie Recommender System
 
-### 🎯 Objetivo del proyecto
+You are working on a modular AI movie recommendation system with an agent-based architecture.
 
-Construir un sistema de recomendación de películas basado en embeddings y evolucionarlo hacia un sistema más avanzado con agentes de IA capaces de razonar, tomar decisiones y orquestar tareas.
+📌 CURRENT ARCHITECTURE
+1. Agent (dispatcher layer)
+Receives: user_input
+Calls: decide_action(user_input)
+Routes request to a tool based on action
+Executes tools from a registry
 
----
+Current behavior:
 
-### ⚙️ Estado actual del proyecto
+"recommend" → recommendation pipeline
+"explain" → explanation tool
 
-#### Flujo de datos:
+Status: ✔ working
+Weakness: still depends on fragile LLM JSON output
 
-1. Me conecto a una API de películas.
-2. Descargo los datos en un CSV.
-3. Para cada película genero un embedding combinando:
+2. Router (decide_action)
+Uses LLM (Ollama / Mistral)
+Outputs structured JSON:
+{
+  "action": "recommend | explain | clarify",
+  "query": "...",
+  "movie": "..."
+}
 
-   * Géneros
-   * Overview (descripción)
-   * Título
-4. Almaceno estos embeddings para luego hacer búsquedas semánticas.
+Status:
+✔ functional
+❌ fragile (can fail due to invalid JSON, missing keys, hallucinated fields)
 
----
+👉 THIS IS THE MAIN SYSTEM WEAK POINT
 
-### 🚀 Backend (FastAPI)
+3. Tool Registry
 
-Tengo varios endpoints tipo POST:
+Maps actions → functions:
 
-* **recommender.py**
-  Recomienda películas en base a un prompt del usuario
-  Ejemplo: *"recomiéndame una peli de drama que tenga que ver con el infierno"*
+TOOLS = {
+    "recommend": recommend_pipeline,
+    "explain": generate_explanation
+}
 
-* **filter.py**
-  Permite filtrar por atributos como género, año, etc.
+Status: ✔ correct and extensible
 
-* **explainer.py**
-  Usa un modelo para explicar por qué se ha recomendado una película
+4. Recommendation Pipeline
 
-* **agent.py**
-  Implementa un agente simple que:
+Pipeline stages:
 
-  * Decide si usar recommender o explainer según el prompt
-  * Si no entiende el prompt, pide reformulación
+embed_query(query)
+retrieve_movies (pgvector search in Postgres)
+apply optional filtering (allowed_ids from SQL filter)
+rank_movies
+return top-K results
 
----
+Status: ✔ fully working
 
-### 🗂️ Estructura del proyecto
+5. Filter System
+Uses FilterRequest
+SQL filtering returns allowed_ids
+integrated into pipeline
 
-app/
-├── agent/
-├── api/
-│   └── routes/
-├── db/
-├── embeddings/
-├── recommender/
-├── repositories/
-├── scripts/
-├── service/
+Status: ✔ working after fixes
 
-data_processing/
-└── data/
+6. Explain Tool
+Calls LLM (Ollama)
+Generates natural language explanation of a movie
 
-infra/
-└── ollama/
+Status: ✔ working but depends on external Ollama service
 
----
+7. Database Layer
+PostgreSQL + pgvector
+embedding similarity search using <->
+retrieval returns ranked candidates
 
-### 🐳 Infraestructura
+Status: ✔ stable after fixing SQL parameter issues
 
-Todo está dockerizado:
+🚨 CURRENT SYSTEM STATE
 
-* Contenedor de modelos con Ollama
-* Contenedor de PostgreSQL
-* Contenedor de FastAPI
+✔ End-to-end pipeline works
+✔ Agent → Tools → Pipeline flow is functional
+✔ Retrieval + ranking + filtering are correct
+✔ Architecture is already LangGraph-ready conceptually
 
----
+❌ Main weakness:
 
-### 🎯 Objetivo actual
+decide_action is fragile and LLM-dependent
+JSON parsing can fail
+schema not enforced
+🎯 NEXT STEPS (IMPORTANT ROADMAP)
+STEP 1 — Fix router robustness (HIGHEST PRIORITY)
 
-Quiero escalar el proyecto y convertirlo en algo más avanzado. Mis intereses principales son:
+Replace fragile LLM JSON with:
 
-* Aprender e integrar **LangChain**
-* Aprender e integrar **LangGraph**
-* Diseñar agentes más complejos y útiles
-* Mejorar la arquitectura del sistema
-* Añadir nuevas capacidades (memoria, razonamiento, multi-step workflows, etc.)
+structured output parsing
+validation layer (Pydantic or schema enforcement)
+fallback parsing if JSON fails
 
-⚠️ Streamlit lo dejaré para el final (primero quiero tener un backend sólido).
+Goal:
+👉 make decide_action deterministic and safe
 
----
+STEP 2 — Standardize tool input format
 
-### ❓ Lo que necesito de ti
+Move toward:
 
-1. Analiza mi arquitectura actual y dime:
+tool(input: dict)
 
-   * Qué está bien
-   * Qué debería mejorar
+Where all tools accept a unified structure:
 
-2. Propón una evolución del sistema:
+query
+filters
+top_k
+movie
+metadata
 
-   * Cómo introducir LangChain o LangGraph
-   * Qué tipo de agentes podría construir
-   * Cómo rediseñar el agente actual
+Goal:
+👉 remove dependency on agent knowing tool signatures
 
-3. Sugiere nuevas funcionalidades interesantes, por ejemplo:
+STEP 3 — Simplify agent into pure dispatcher
 
-   * Sistemas multi-agente
-   * Memoria conversacional
-   * RAG (Retrieval Augmented Generation)
-   * Evaluación de recomendaciones
+Agent should become:
 
-4. Propón un roadmap claro de aprendizaje e implementación (por fases)
+decision = decide_action(input)
+return TOOLS[decision["action"]](decision)
 
-5. Si detectas malas prácticas o limitaciones, dímelo claramente
+Goal:
+👉 zero business logic in agent
 
----
+STEP 4 — Prepare LangGraph migration
 
-Quiero una respuesta técnica, estructurada y orientada a llevar este proyecto a un nivel profesional.
+Once stable:
+
+each tool = node
+agent = router node
+state = shared dict
+
+Goal:
+👉 easy migration to graph-based execution
+
+🧭 FINAL STATE YOU ARE AIMING FOR
+
+A system where:
+
+routing is robust (no fragile JSON failures)
+tools are stateless and standardized
+agent is a pure dispatcher
+pipeline is composable
+ready for LangGraph orchestration

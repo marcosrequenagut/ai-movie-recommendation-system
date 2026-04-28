@@ -4,13 +4,13 @@
 
 results = recommend_pipeline(
     query="a dark sci-fi movie about space",
-    allowed_ids=None,
+    filters=None,
     top_k=5
 )
-
+'''
 #print(results)
 
-# TEST 2
+'''# TEST 2
 
 from app.recommender.ranking.ranking_service import rank_movies
 result = rank_movies([
@@ -38,7 +38,9 @@ results = retrieve_movies(
 
 # 4. TEST DEL AGENTE (CRÍTICO)
 # Debe devolver lista de películas
-from app.agent.agent import agent
+'''from app.agent.agent import agent
+
+print("\n\n\n\n\n\n\n\nTEST DEL AGENTE:\n\n\n\n\n\n\n\n")
 
 result = agent(
     user_input="recommend me a dark sci-fi movie",
@@ -46,12 +48,12 @@ result = agent(
     top_k=5
 )
 
-print(result)
+print(result)'''
 
-'''5. TEST DE EXPLAINER
-✔ debe devolver texto natural
+#5. TEST DE EXPLAINER
+# debe devolver texto natural
 from app.service.explainer import generate_explanation
-
+print("\n\n\n\n\n\n\n\nTEST DEL EXPLAINER:\n\n\n\n\n\n\n\n")
 print(
     generate_explanation(
         query="dark sci-fi movie",
@@ -59,4 +61,3 @@ print(
         metadata={"genre": "sci-fi"}
     )
 )
-'''

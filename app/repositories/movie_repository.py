@@ -4,6 +4,8 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
 
     cur = conn.cursor()
 
+    print("ALLOWED IDS EN MOVIE_REPOSITORY.PY:", allowed_ids, "TOP K:", top_k)
+
     sql_query = """
         SELECT id, title, content,
                embedding <-> %s::vector AS distance,
@@ -12,8 +14,13 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     """
 
     params = [embedding]
+    print("ALLOWED IDS:", allowed_ids)
+    print("TOP K:", top_k)
 
     if allowed_ids:
+        if not isinstance(allowed_ids, list):
+            allowed_ids = [allowed_ids]
+
         sql_query += " WHERE id = ANY(%s)"
         params.append(allowed_ids)
 
@@ -23,6 +30,12 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     """
 
     params.append(top_k)
+
+    print("PARAMS:", params)
+    print("NUM PARAMS:", len(params))
+    print("NUM %s:", sql_query.count("%s"))
+    print("SQL FINAL:")
+    print(sql_query)
 
     cur.execute(sql_query, params)
     results = cur.fetchall()
