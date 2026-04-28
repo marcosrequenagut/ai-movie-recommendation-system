@@ -1,26 +1,18 @@
 from ..db.connection import get_connection
 from ..embeddings.service import embed_query
-from ..repositories.movie_repository import search_movies_by_embedding
+from ..retrieval.retrieval_service import retrieve_movies
 
 
 def get_recommended_movies(query, top_k=5, allowed_ids=None):
 
-    # 1. Conection
-    conn = get_connection()
+    # 1. Encoding
+    query_embedding = embed_query(query)
 
-    try:
-        # 2. Embedding
-        query_embedding = embed_query(query)
+    # 2. Retrieval (DB + repository)
+    results = retrieve_movies(
+        embedding=query_embedding,
+        allowed_ids=allowed_ids,
+        top_k=top_k
+    )
 
-        # 3. Search
-        results = search_movies_by_embedding(
-            conn=conn,
-            embedding=query_embedding,
-            allowed_ids=allowed_ids,
-            top_k=top_k
-        )
-
-        return results
-
-    finally:
-        conn.close()
+    return results
