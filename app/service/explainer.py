@@ -1,9 +1,16 @@
 import requests
 
+from app.agent.state import AgentState
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 #OLLAMA_URL = "http://ollama:11434/api/generate"
 
-def generate_explanation(query: str, movie: str, metadata: dict=None):
+def generate_explanation(agent_state: AgentState):
+    
+    query = agent_state.query
+    movie = agent_state.movie
+    metadata = agent_state.metadata
+
     prompt = f"""
     You are a movie recommendation assistant.
 

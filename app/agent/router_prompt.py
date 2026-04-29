@@ -2,6 +2,7 @@ from app.agent.router_schema import RouterOutput
 
 import requests
 import json
+import re
 
 #OLLAMA_URL = "http://ollama:11434/api/generate"
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -9,16 +10,27 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 def parse_router_output(raw_text: str) -> RouterOutput:
 
     try:
-
-        data = json.loads(raw_text)
+        json_data = extract_json(raw_text)
+        data = json.loads(json_data)
         return RouterOutput(**data)
     
     except Exception:
-
         return RouterOutput(
             action="clarify",
             query="",
             movie="")
+    
+def extract_json(raw_text: str) -> str:
+    """
+    This function extracts the JSON object from the raw
+    text created by de LLM model
+    """
+    match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+
+    if not match:
+        raise ValueError("No JSON object found in the text")
+    
+    return match.group(0)
 
 def decide_action(user_input):
 
@@ -61,6 +73,7 @@ def decide_action(user_input):
     print("---START----")
 
     raw_result = response.json()["response"]
+
     print("\n\n\n\n\n\n\n\nRAW RESPONSE:", raw_result,"\n\n\n\n\n\n\n\n")
 
     result = parse_router_output(raw_result)

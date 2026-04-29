@@ -38,7 +38,7 @@ results = retrieve_movies(
 
 # 4. TEST DEL AGENTE (CRÍTICO)
 # Debe devolver lista de películas
-'''from app.agent.agent import agent
+from app.agent.agent import agent
 
 print("\n\n\n\n\n\n\n\nTEST DEL AGENTE:\n\n\n\n\n\n\n\n")
 
@@ -48,10 +48,10 @@ result = agent(
     top_k=5
 )
 
-print(result)'''
+print(result)
 
 #5. TEST DE EXPLAINER
-# debe devolver texto natural
+'''# debe devolver texto natural
 from app.service.explainer import generate_explanation
 print("\n\n\n\n\n\n\n\nTEST DEL EXPLAINER:\n\n\n\n\n\n\n\n")
 print(
@@ -60,4 +60,4 @@ print(
         movie="Interstellar",
         metadata={"genre": "sci-fi"}
     )
-)
+)'''

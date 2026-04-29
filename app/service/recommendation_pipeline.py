@@ -1,3 +1,4 @@
+from app.agent.state import AgentState
 from app.db.connection import get_connection
 from app.service.filter import filter_movies
 from app.service.filter import FilterRequest
@@ -5,7 +6,11 @@ from ..embeddings.service import embed_query
 from ..retrieval.retrieval_service import retrieve_movies
 from ..recommender.ranking.ranking_service import rank_movies
 
-def recommend_pipeline(query, top_k=5, filters=None):
+def recommend_pipeline(state: AgentState):
+
+    query = state.query
+    filters = state.filters
+    top_k = state.top_k
 
     conn =  get_connection()
 
