@@ -1,10 +1,27 @@
+from app.agent.router_schema import RouterOutput
+
 import requests
 import json
 
 #OLLAMA_URL = "http://ollama:11434/api/generate"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
+def parse_router_output(raw_text: str) -> RouterOutput:
+
+    try:
+
+        data = json.loads(raw_text)
+        return RouterOutput(**data)
+    
+    except Exception:
+
+        return RouterOutput(
+            action="clarify",
+            query="",
+            movie="")
+
 def decide_action(user_input):
+
     prompt = f"""
     You are NOT a movie recommender.
 
@@ -42,9 +59,13 @@ def decide_action(user_input):
     )
 
     print("---START----")
-    print("\n\n\n\n\n\n\n\nRAW RESPONSE:", response.json()["response"],"\n\n\n\n\n\n\n\n")
-    result = json.loads(response.json()["response"]) 
-    print("This is the result of the response: ", result)
+
+    raw_result = response.json()["response"]
+    print("\n\n\n\n\n\n\n\nRAW RESPONSE:", raw_result,"\n\n\n\n\n\n\n\n")
+
+    result = parse_router_output(raw_result)
+    print("PARSED RESPONSE ", result)
+
     print("---END----")
 
     return result
