@@ -4,8 +4,8 @@ import requests
 import json
 import re
 
-#OLLAMA_URL = "http://ollama:11434/api/generate"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "http://ollama:11434/api/generate"
+#OLLAMA_URL = "http://localhost:11434/api/generate"
 
 def parse_router_output(raw_text: str) -> RouterOutput:
 
@@ -35,25 +35,26 @@ def extract_json(raw_text: str) -> str:
 def decide_action(user_input):
 
     prompt = f"""
-    You are NOT a movie recommender.
+    You are a strict JSON router.
 
-    You are ONLY a JSON router.
+    You MUST choose ONE action: "recommend", "explain", or "clarify".
 
-    DO NOT recommend movies.
-    DO NOT explain anything.
-    DO NOT add any text.
+    Decision rules (apply in order):
 
-    If user intent is unclear or ambiguous:
-    → return action = "clarify"
+    1. If the user asks for movie recommendations → action = "recommend"
+    2. If the user mentions a specific movie → action = "explain"
+    3. Only if the request is too vague → action = "clarify"
 
-    If you output anything other than JSON, you FAIL.
+    IMPORTANT:
+    - "recommend me a dark sci-fi movie" is CLEAR → use "recommend"
+    - DO NOT overuse "clarify"
 
-    Return ONLY this JSON (no NOT forget the movie key, it should be always created):
+    Output ONLY JSON:
 
     {{
-    "action": "recommend | explain | clarify",
+    "action": "...",
     "query": "...",
-    "movie": "..."
+    "movie": null
     }}
 
     User input:
@@ -74,7 +75,7 @@ def decide_action(user_input):
 
     raw_result = response.json()["response"]
 
-    print("\n\n\n\n\n\n\n\nRAW RESPONSE:", raw_result,"\n\n\n\n\n\n\n\n")
+    print("\n\nRAW RESPONSE:", raw_result,"\n\n")
 
     result = parse_router_output(raw_result)
     print("PARSED RESPONSE ", result)

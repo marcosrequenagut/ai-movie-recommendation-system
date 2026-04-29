@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 
 class RouterOutput(BaseModel):
     action: Literal["recommend", "explain", "clarify"]
     query: str = ""
-    movie: str = ""
+    movie: Optional[str] = None

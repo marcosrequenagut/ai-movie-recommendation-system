@@ -12,3 +12,5 @@ fastapi
 psycopg2-binary
 pgvector
 requests==2.31.0
+streamlit
+langgraph

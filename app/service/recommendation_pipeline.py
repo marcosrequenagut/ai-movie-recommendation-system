@@ -36,8 +36,10 @@ def recommend_pipeline(state: AgentState):
         # 4. Ranking (final decision)
         ranked_movies = rank_movies(candidates)
 
-        # Return the top-K final movies
-        return ranked_movies[:top_k]
+        # Return the top-K final movies only the title
+        return [
+            movie[1] for movie in ranked_movies
+        ]
     
     finally:
         conn.close()

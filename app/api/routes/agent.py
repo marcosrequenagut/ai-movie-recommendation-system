@@ -1,15 +1,23 @@
 from fastapi import APIRouter
-from app.agent.agent import run_agent
+from app.agent.agent import agent
+from app.agent.agent_schema import AgentRequest
 
 router =  APIRouter()
 
 @router.post("/agent")
-def agent_chat(data: dict):
+def agent_chat(data: AgentRequest):
 
-    user_input = data["message"]
+    result = agent(
+        user_input = data.message,
+        top_k = data.top_k
+    )
 
-    result = run_agent(user_input)
+    print("AGENT RESULT:", result)
 
-    return result
+    return {
+        "query": result.get("query"),
+        "action": result.get("action"),
+        "movies": result.get("movies", [])
+    }
 
 

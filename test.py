@@ -36,7 +36,7 @@ results = retrieve_movies(
 
 #print(len(results))
 
-# 4. TEST DEL AGENTE (CRÍTICO)
+'''# 4. TEST DEL AGENTE (CRÍTICO)
 # Debe devolver lista de películas
 from app.agent.agent import agent
 
@@ -51,7 +51,7 @@ result = agent(
 print(result)
 
 #5. TEST DE EXPLAINER
-'''# debe devolver texto natural
+# debe devolver texto natural
 from app.service.explainer import generate_explanation
 print("\n\n\n\n\n\n\n\nTEST DEL EXPLAINER:\n\n\n\n\n\n\n\n")
 print(
@@ -61,3 +61,10 @@ print(
         metadata={"genre": "sci-fi"}
     )
 )'''
+
+from app.agent.agent import agent
+
+print(agent(
+    user_input="recommend me a dark sci-fi movie",
+    top_k=10
+))

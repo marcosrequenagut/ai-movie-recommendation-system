@@ -1,18 +1,18 @@
-from app.agent.execute_graph import execute_graph
-from app.agent.router_prompt import decide_action
+from app.agent.graph import app
 from app.agent.state import AgentState
-from app.agent.tools_registry import TOOLS
 
 def agent(user_input, filters=None, top_k=5):
 
-    decision = decide_action(user_input)
-
     state = AgentState(
-        query=decision.query,
-        movie=decision.movie,
+        query=user_input,
         filters=filters,
-        top_k=top_k,
-        metadata=None
+        top_k=top_k
     )
 
-    return execute_graph(state, decision.action)
+    result = app.invoke(state)
+
+    return {
+        "query": result.get("query"),
+        "action": result.get("action"),
+        "movies": result.get("movies", []) 
+    }

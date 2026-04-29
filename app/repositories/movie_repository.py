@@ -14,8 +14,6 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     """
 
     params = [embedding]
-    print("ALLOWED IDS:", allowed_ids)
-    print("TOP K:", top_k)
 
     if allowed_ids:
         if not isinstance(allowed_ids, list):
@@ -30,12 +28,6 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     """
 
     params.append(top_k)
-
-    print("PARAMS:", params)
-    print("NUM PARAMS:", len(params))
-    print("NUM %s:", sql_query.count("%s"))
-    print("SQL FINAL:")
-    print(sql_query)
 
     cur.execute(sql_query, params)
     results = cur.fetchall()
