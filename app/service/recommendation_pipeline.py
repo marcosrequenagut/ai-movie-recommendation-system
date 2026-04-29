@@ -17,9 +17,9 @@ def recommend_pipeline(state: AgentState):
     try:
         # 1. Apply filters
         allowed_ids = None
-        if filters:
+        if filters and "genres" in filters:
             allowed_ids = filter_movies(
-                FilterRequest(**filters), conn
+                FilterRequest(genres=filters["genres"]), conn
             )
             print("ALLOWED IDS DESPUÉS DE FILTRAR:", allowed_ids)
 

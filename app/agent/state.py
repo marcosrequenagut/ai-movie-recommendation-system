@@ -6,7 +6,7 @@ from typing import List, Optional, Any
 class AgentState(BaseModel):
     query: str
     movie: Optional[str] = None
-    filters: Optional[Any] = None
+    filters: Optional[dict] = None
     top_k: int = 5
     metadata: Optional[Any] = None
     action: Optional[str] = None

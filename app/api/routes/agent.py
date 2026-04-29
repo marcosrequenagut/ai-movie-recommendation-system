@@ -9,7 +9,9 @@ def agent_chat(data: AgentRequest):
 
     result = agent(
         user_input = data.message,
-        top_k = data.top_k
+        top_k = data.top_k,
+        filters = data.genres,
+        user_mode = data.user_mode or "smart"
     )
 
     print("AGENT RESULT:", result)

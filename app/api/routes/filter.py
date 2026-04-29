@@ -5,10 +5,15 @@ from app.service.filter import FilterRequest
 router = APIRouter()
 
 @router.post("/filter")
-def filter_movies(request: FilterRequest):
+def apply_genres_filter(movies, genres):
 
     conn = get_connection()
-    result = filter_movies(request, conn)
-    conn.close()
 
+    result = filter_movies(
+        movies = movies,
+        genres = genres,
+        conn = conn
+    )
+
+    conn.close()
     return result

@@ -76,3 +76,7 @@ docker exec -it ollama ollama list para comprobar si ambos modelos se han descar
 ##### MODELOS USADOS
 mistral: en router_prompt para crear el json de decision
 nomic-embed-text:latest para crear los embedings
+
+
+##### FEATURINGS
+El recomendador tiene un modo a elegir, en funcion de lo que quiera el usuario se reajustaran los pesos de manera que las peliculas que se recomienden sesguen mas hacia un lado o hacia otro dependiendo del modo que elija el usuario

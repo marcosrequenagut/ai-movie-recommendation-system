@@ -1,5 +1,4 @@
 from app.db.connection import get_connection
-from app.embeddings.service import embed_query
 from app.repositories.movie_repository import search_movies_by_embedding
 
 
