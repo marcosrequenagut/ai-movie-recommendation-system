@@ -17,9 +17,14 @@ def recommend_pipeline(state: AgentState):
     try:
         # 1. Apply filters
         allowed_ids = None
-        if filters and "genres" in filters:
+        if filters:
             allowed_ids = filter_movies(
-                FilterRequest(genres=filters["genres"]), conn
+                FilterRequest(
+                    genres=filters.get("genres", [])
+                    min_ratin=filters.get("min_rating", 0.0),
+                    year_from=filters.get("year_from", 1900),
+                    year_to=filters.get("year_to", 2100)),
+                    conn
             )
             print("ALLOWED IDS DESPUÉS DE FILTRAR:", allowed_ids)
 
@@ -34,7 +39,9 @@ def recommend_pipeline(state: AgentState):
         )
 
         # 4. Ranking (final decision)
-        ranked_movies = rank_movies(candidates)
+        ranked_movies = rank_movies(
+            candidates,
+            user_filters=filters)
 
         # Return the top-K final movies only the title
         return [

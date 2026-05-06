@@ -8,7 +8,8 @@ def retrieve_movies(query_embedding, top_k=5, allowed_ids=None):
     Unic retrieval layer:
     - Connects to the DB
     - Execute the vectorial search
-    - Returns the candidates movies"""
+    - Returns the candidates movies
+    """
 
     # 1. Conection
     conn = get_connection()

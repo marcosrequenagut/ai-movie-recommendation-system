@@ -1,19 +1,18 @@
 from fastapi import APIRouter
 from app.db.connection import get_connection
-from app.service.filter import FilterRequest
+from app.service.filter import FilterRequest, filter_movies
 
 router = APIRouter()
 
 @router.post("/filter")
-def apply_genres_filter(movies, genres):
+def apply_genres_filter(data: FilterRequest):
+    """This endpoint call the filter_movies to use the filters introduced by the user."""
 
     conn = get_connection()
 
-    result = filter_movies(
-        movies = movies,
-        genres = genres,
-        conn = conn
-    )
+    try:
+        result = filter_movies(data, conn)   
+        return {"movies": result}
 
-    conn.close()
-    return result
+    finally:
+        conn.close()

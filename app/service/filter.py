@@ -7,7 +7,10 @@ class FilterRequest(BaseModel):
     year_to: int = 2100
 
 
-def filter_movies(request, conn):
+def filter_movies(request: FilterRequest, conn):
+
+    """This function reads the data from a PostGree DB and filters it
+    directly using the filters introduced by the user."""
 
     cur = conn.cursor()
 

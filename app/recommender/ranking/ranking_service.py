@@ -1,15 +1,20 @@
 
 def get_best_movie(results):
 
-    """Function to get the best movie from the results and return its metadata"""
+    """Funtion that returns metada of the highest scoring movie."""
 
-    # Introduce the explaination of the most recommended movie using a LLM called Ollama
-    score_most_recommended_movie = 0
+    if not results:
+        return None
+    
+    best_score = float("-inf")
+    best_movie = None
+
     for r in results:
         score = float(r[3])
-        if score > score_most_recommended_movie:
+
+        if score > best_score:
             # Create a metadata using the most recommended movie
-            dict_metadata = {
+            best_movie = {
                 "title": r[1],
                 "genres": r[4],
                 "overview": r[5],
@@ -18,9 +23,9 @@ def get_best_movie(results):
                 "popularity": r[8],
             }
 
-            score_most_recommended_movie = score
+            best_score = score
 
-    return dict_metadata
+    return best_movie
 
 def get_weights(mode = "smart"):
 
@@ -31,35 +36,33 @@ def get_weights(mode = "smart"):
     matching and third value is the weight for the weighted rating.
     """
 
-    if mode == "quality":
-        return 0.45, 0.20, 0.35
+    weights = {
+        "quality": (0.45, 0.20, 0.35),
+        "taste": (0.50, 0.35, 0.15),
+        "smart": (0.55, 0.25, 0.20),
+    }
     
-    if mode == "taste":
-        return 0.50, 0.35, 0.15
-    
-    # default: smart
-    return 0.55, 0.25, 0.20
+    # Return weights, default: smart
+    return weights.get(mode, weights["smart"])
 
 
 def rank_movies(candidates, user_filters=None):
     """
-    Basic Ranking in python (phase 1)
-    Now, it respects the score of the DB.
-    In the future, we will abstract it to upgrade it."""
+    Rank movies using hybrid scoring (embedding + genre + rating)
+    """
 
     user_filters = user_filters or {}
     user_genres = set(user_filters.get("genres", []))
     user_mode = user_filters.get("user_mode", "smart")
 
-
-
-    def score(x, user_mode=user_mode):
+    def score(x):
         # 1. embedding
         embedding_score = float(x[3])  # Assuming x[3] is the cosine similarity score from the DB
         print("EMBEDDING SCORE:", embedding_score)
 
         # 2 genres matching
         movie_genres = set(x[4] or [])
+
         if user_genres:
             genre_score = len(user_genres & movie_genres) / len(user_genres)
         else:
@@ -72,7 +75,7 @@ def rank_movies(candidates, user_filters=None):
         w_emb, w_genres, w_rating = get_weights(user_mode)
 
         # Final score is a weighted sum of the three components
-        final_score = (
+        return (
             w_emb * embedding_score +
             w_genres * genre_score +
             w_rating * weighted_rating

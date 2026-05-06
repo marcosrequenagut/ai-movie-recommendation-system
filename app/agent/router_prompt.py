@@ -8,31 +8,45 @@ OLLAMA_URL = "http://ollama:11434/api/generate"
 #OLLAMA_URL = "http://localhost:11434/api/generate"
 
 def parse_router_output(raw_text: str) -> RouterOutput:
+    """Create a parse logic for the decide action output"""
 
     try:
         json_data = extract_json(raw_text)
         data = json.loads(json_data)
         return RouterOutput(**data)
     
-    except Exception:
+    except Exception as e:
+        print(f"Router error: {e}")
+
         return RouterOutput(
-            action="clarify",
-            query="",
-            movie="")
+            action="clarify")
     
 def extract_json(raw_text: str) -> str:
     """
-    This function extracts the JSON object from the raw
-    text created by de LLM model
+    Extracts the first valid JSON object from a messy LLM output.
     """
-    match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+
+    # Remove markdown code fences if present
+    cleaned = re.sub(r"```json|```", "", raw_text).strip()
+
+    # Try direct parse first (fast path)
+    try:
+        json.loads(cleaned)
+        return cleaned
+    except Exception:
+        pass
+
+    # Fallback: regex extraction
+    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
 
     if not match:
-        raise ValueError("No JSON object found in the text")
-    
+        raise ValueError("No JSON object found in LLM output")
+
     return match.group(0)
 
-def decide_action(user_input):
+def decide_action(user_input: str) -> RouterOutput:
+
+    """This function decides which action has to take the Agent by creating a json where the action is indicated."""
 
     prompt = f"""
     You are a strict JSON router.
@@ -46,16 +60,27 @@ def decide_action(user_input):
     3. Only if the request is too vague → action = "clarify"
 
     IMPORTANT:
-    - "recommend me a dark sci-fi movie" is CLEAR → use "recommend"
     - DO NOT overuse "clarify"
-
-    Output ONLY JSON:
+    - Your response must be valid JSON.
+    - No markdown. No extra text.
+    
+    Output format:
 
     {{
-    "action": "...",
-    "query": "...",
-    "movie": null
+    "action": "<recommend|explain|clarify>"
     }}
+
+    EXAMPLES:
+
+    User: "Recommend a sci-fi movie"
+    Output: {{"action": "recommend"}}
+
+    User: "What is Interstellar about?"
+    Output: {{"action": "explain"}}
+
+    User: "I want something good"
+    Output: {{"action": "clarify"}} 
+
 
     User input:
     {user_input}

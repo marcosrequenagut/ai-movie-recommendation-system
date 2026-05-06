@@ -3,7 +3,7 @@ import requests
 def get_embedding(text: str):
 
     """
-    Make the call to the model
+    Call Ollama embedding model (nomic-embed-text) and returns a raw vector with the embedding of the text received as an input.
     """
 
     response = requests.post(
@@ -15,7 +15,7 @@ def get_embedding(text: str):
         }
     )
 
-    response.raise_for_status()  # 👈 clave para debug real
+    response.raise_for_status() 
 
     data = response.json()
 
