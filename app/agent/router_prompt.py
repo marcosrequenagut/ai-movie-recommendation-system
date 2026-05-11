@@ -1,4 +1,5 @@
 from app.agent.router_schema import RouterOutput
+from typing import Any
 
 import requests
 import json
@@ -7,8 +8,21 @@ import re
 OLLAMA_URL = "http://ollama:11434/api/generate"
 #OLLAMA_URL = "http://localhost:11434/api/generate"
 
-def parse_router_output(raw_text: str) -> RouterOutput:
+def parse_router_output(raw_text: Any) -> RouterOutput:
     """Create a parse logic for the decide action output"""
+
+    # If it receives a dict, it extracts the response field and the decide_action value.
+    if isinstance(raw_text, dict):
+        # Raw text is a dictionary. Response is a dictionary with a key as a form of string dictionary: {"response": '{"action": "recommend"}'}
+        raw = raw_text["response"]
+
+        # Transform the value string in a dictionary
+        dict_raw = json.loads(raw)
+
+        # Extract the string decide_action: "clarify", "recommend", "explain"
+        decide_action = dict_raw["action"]
+        return RouterOutput(
+            action=decide_action)
 
     try:
         json_data = extract_json(raw_text)
@@ -21,11 +35,10 @@ def parse_router_output(raw_text: str) -> RouterOutput:
         return RouterOutput(
             action="clarify")
     
-def extract_json(raw_text: str) -> str:
+def extract_json(raw_text: Any) -> str:
     """
     Extracts the first valid JSON object from a messy LLM output.
     """
-
     # Remove markdown code fences if present
     cleaned = re.sub(r"```json|```", "", raw_text).strip()
 
@@ -98,11 +111,13 @@ def decide_action(user_input: str) -> RouterOutput:
 
     print("---START----")
 
-    raw_result = response.json()["response"]
+    # From the dictionary, take only the "action" key, where the OLLAMA model decides what action to take.
+    #action_decided = json.loads(response.json()["response"])["action"]
 
-    print("\n\nRAW RESPONSE:", raw_result,"\n\n")
+    json_response = response.json()
+    print("\n\nRAW RESPONSE:", json_response,"\n\n")
 
-    result = parse_router_output(raw_result)
+    result = parse_router_output(json_response)
     print("PARSED RESPONSE ", result)
 
     print("---END----")

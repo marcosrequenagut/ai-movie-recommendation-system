@@ -231,7 +231,7 @@ Movie data is obtained from TMDB API.
 ## Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/marcosrequenagut/ai-movie-recommendation-system
 
 cd ai-movie-recommendation-system
 ```

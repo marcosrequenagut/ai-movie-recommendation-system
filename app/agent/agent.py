@@ -11,7 +11,7 @@ def agent(user_input, filters=None, top_k=5, user_mode="smart"):
         query=user_input,
         filters=filters,
         top_k=top_k,
-        user_mode=user_mode
+        user_mode=user_mode,
     )
 
     # Execute the graph (router + nodes ...) app is defined in the graph.py script, where it is compiled: app = graph.compile()

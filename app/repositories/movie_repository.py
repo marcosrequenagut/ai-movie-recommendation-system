@@ -4,8 +4,6 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
 
     cur = conn.cursor()
 
-    print("ALLOWED IDS EN MOVIE_REPOSITORY.PY:", allowed_ids, "TOP K:", top_k)
-
     sql_query = """
         SELECT id, title, content,
                embedding <-> %s::vector AS distance,

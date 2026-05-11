@@ -11,6 +11,10 @@ def recommend_pipeline(state: AgentState):
     query = state.query
     filters = state.filters
     top_k = state.top_k
+    user_mode = state.user_mode
+
+    print("\n\n FILTROS (en service/recommendation_pipeline.py): ", filters)
+    print("USER MODE (en service/recommendation_pipeline.py): ", user_mode)
 
     conn =  get_connection()
 
@@ -20,13 +24,13 @@ def recommend_pipeline(state: AgentState):
         if filters:
             allowed_ids = filter_movies(
                 FilterRequest(
-                    genres=filters.get("genres", [])
-                    min_ratin=filters.get("min_rating", 0.0),
+                    genres=filters.get("genres", []),
+                    min_rating=filters.get("min_rating", 0.0),
                     year_from=filters.get("year_from", 1900),
                     year_to=filters.get("year_to", 2100)),
                     conn
             )
-            print("ALLOWED IDS DESPUÉS DE FILTRAR:", allowed_ids)
+            print("NUMERO DE ALLOWED IDS DESPUÉS DE FILTRAR:", len(allowed_ids))
 
         # 2. Encoding the query into an embedding
         query_embedding = embed_query(query)
@@ -41,7 +45,8 @@ def recommend_pipeline(state: AgentState):
         # 4. Ranking (final decision)
         ranked_movies = rank_movies(
             candidates,
-            user_filters=filters)
+            user_filters=filters,
+            user_mode=user_mode)
 
         # Return the top-K final movies only the title
         return [

@@ -8,8 +8,8 @@ router = APIRouter()
 def explain_recommendation(data: dict):
 
     state = AgentState(
-        query = data["query"]
-        movie = data["movie"]
+        query = data["query"],
+        movie = data["movie"],
         metadata = data.get("metadata", {})
     )
 

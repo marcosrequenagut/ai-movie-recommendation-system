@@ -46,19 +46,17 @@ def get_weights(mode = "smart"):
     return weights.get(mode, weights["smart"])
 
 
-def rank_movies(candidates, user_filters=None):
+def rank_movies(candidates, user_filters=None, user_mode="smart"):
     """
     Rank movies using hybrid scoring (embedding + genre + rating)
     """
 
     user_filters = user_filters or {}
     user_genres = set(user_filters.get("genres", []))
-    user_mode = user_filters.get("user_mode", "smart")
 
     def score(x):
         # 1. embedding
         embedding_score = float(x[3])  # Assuming x[3] is the cosine similarity score from the DB
-        print("EMBEDDING SCORE:", embedding_score)
 
         # 2 genres matching
         movie_genres = set(x[4] or [])
@@ -74,12 +72,11 @@ def rank_movies(candidates, user_filters=None):
         # Weights for each component
         w_emb, w_genres, w_rating = get_weights(user_mode)
 
+        final_score = w_emb * embedding_score + w_genres * genre_score + w_rating * weighted_rating
+        print ("\nFINAL SCORE: ", final_score)
+
         # Final score is a weighted sum of the three components
-        return (
-            w_emb * embedding_score +
-            w_genres * genre_score +
-            w_rating * weighted_rating
-        )
+        return final_score
 
     # x[3] is the cosine similarity calculated in the BD using SQL and reverse=False because fewer distance = better movie
     return sorted(candidates, key=score, reverse=True)

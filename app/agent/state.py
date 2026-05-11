@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional, Any, Field
+from pydantic import BaseModel, Field
+from typing import List, Optional, Any
 
 # Create a state model to hold the current state of the agent
 # Standard structure for ALL the nodes
@@ -15,3 +15,5 @@ class AgentState(BaseModel):
     user_mode: Optional[str] = "smart"
     explanation: Optional[str] = None
     message: Optional[str] = None
+    year_from: Optional[int] = 1900
+    year_to: Optional[int] = 2100

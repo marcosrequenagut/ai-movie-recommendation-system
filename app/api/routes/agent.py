@@ -8,10 +8,10 @@ router =  APIRouter()
 def agent_chat(data: AgentRequest):
 
     result = agent(
-        user_input = data.message,
+        user_input = data.query,
         top_k = data.top_k,
         filters = data.filters,
-        user_mode = data.user_mode or "smart"
+        user_mode = data.user_mode or "smart",
     )
 
     print("AGENT RESULT:", result)
@@ -19,7 +19,9 @@ def agent_chat(data: AgentRequest):
     return {
         "query": result.get("query"),
         "action": result.get("action"),
-        "movies": result.get("movies", [])
+        "movies": result.get("movies", []),
+        "filters": result.get("filters", {}),
+        "user_mode": result.get("user_mode")
     }
 
 
