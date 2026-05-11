@@ -21,5 +21,7 @@ def agent(user_input, filters=None, top_k=5, user_mode="smart"):
     return {
         "query": result.get("query"),
         "action": result.get("action"),
-        "movies": result.get("movies", []) 
+        "movies": result.get("movies", []),
+        "filters": result.get("filters", {}),
+        "user_mode": result.get("user_mode") 
     }

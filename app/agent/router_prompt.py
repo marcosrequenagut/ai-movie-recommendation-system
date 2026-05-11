@@ -21,8 +21,7 @@ def parse_router_output(raw_text: Any) -> RouterOutput:
 
         # Extract the string decide_action: "clarify", "recommend", "explain"
         decide_action = dict_raw["action"]
-        return RouterOutput(
-            action=decide_action)
+        return RouterOutput(**dict_raw)
 
     try:
         json_data = extract_json(raw_text)
@@ -56,6 +55,20 @@ def extract_json(raw_text: Any) -> str:
         raise ValueError("No JSON object found in LLM output")
 
     return match.group(0)
+
+def call_llm(prompt: str, temperature: float = 0):
+
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": "mistral",
+            "prompt": prompt,
+            "stream": False,
+            "temperature": 0
+        }
+    )
+
+    return response.json()["response"]
 
 def decide_action(user_input: str) -> RouterOutput:
 
@@ -91,30 +104,29 @@ def decide_action(user_input: str) -> RouterOutput:
     User: "What is Interstellar about?"
     Output: {{"action": "explain"}}
 
+    If action = clarify, you MUST include:
+    - message: explanation to the user
+    - rewritten_query: improved version of the query (if possible)
+
     User: "I want something good"
-    Output: {{"action": "clarify"}} 
+    Output: {{
+        "action": "clarify",
+        "message": "I didn't understant your request",
+        "rewritten_query: "Recommend sci-fi movies"}} 
 
 
     User input:
     {user_input}
     """
 
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": "mistral",
-            "prompt": prompt,
-            "stream": False,
-            "temperature": 0
-        }
-    )
+    response = call_llm(prompt, temperature=0)
 
     print("---START----")
 
     # From the dictionary, take only the "action" key, where the OLLAMA model decides what action to take.
     #action_decided = json.loads(response.json()["response"])["action"]
 
-    json_response = response.json()
+    json_response = response
     print("\n\nRAW RESPONSE:", json_response,"\n\n")
 
     result = parse_router_output(json_response)
