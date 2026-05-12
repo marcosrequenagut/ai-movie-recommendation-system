@@ -15,7 +15,7 @@ class AgentState(BaseModel):
     user_mode: Optional[str] = "smart"
     explanation: Optional[str] = None
     message: Optional[str] = None
-    year_from: Optional[int] = 1900
-    year_to: Optional[int] = 2100
     clarify_count:  int = 0
     semantic_flag: bool = False # Necessary when the clarify option is selected. It prevents to reexecute the semantic_filter_node.
+    expansion_flag: bool = False # Necessary when the clarify option is selected. It prevents to reexecute the expansion_filter_node.
+    expanded_queries: List[str] = Field(default_factory=list)

@@ -8,7 +8,8 @@ from app.agent.nodes import (
     explain_node,
     format_output_node,
     final_clarify_node,
-    semantic_filter_node
+    semantic_filter_node,
+    query_expansion_node
 )
 
 
@@ -18,6 +19,7 @@ graph = StateGraph(AgentState)
 # Nodes (each node is a function of IA or logic)
 graph.add_node("router", router_node)
 graph.add_node("semantic_filter", semantic_filter_node)
+graph.add_node("query_expansion", query_expansion_node)
 graph.add_node("recommend", recommend_node)
 graph.add_node("explain", explain_node)
 graph.add_node("clarify", clarify_node) # Loop to the router until it choses a different option than clarify
@@ -54,14 +56,15 @@ graph.add_conditional_edges(
     }
 )
 
-# It is necessary to connect all the nodes to the "output node". All nodes produce intermediate results, one final node formatter cleans everything. This is done to enforce consistency.
+graph.add_edge("semantic_filter", "query_expansion") 
+graph.add_edge("query_expansion", "router") # As query expansion is a decision node, we had to connect it to a decision node like the router node, which knows the action to take (because it was set int eh first router pass)
+
 graph.add_edge("recommend", "format_output_node")
 graph.add_edge("explain", "format_output_node")
 graph.add_edge("final_clarify", "format_output_node")
 graph.add_edge("clarify", "router") # This edge is the one who creates the loop in the clarify node
-graph.add_edge("semantic_filter", "router") # When this node is executed, it returns to the router and it won't be execute then, it will be skiped. 
-# Final (Execution stops here)
-graph.add_edge("format_output_node", END)
+
+graph.add_edge("format_output_node", END) # Final (Execution stops here)
 
 # Compile (turns the graph definition into an executable system)
 app = graph.compile()

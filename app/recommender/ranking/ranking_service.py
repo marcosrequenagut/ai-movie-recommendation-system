@@ -10,7 +10,9 @@ def get_best_movie(results):
     best_movie = None
 
     for r in results:
-        score = float(r[3])
+
+        distance = float(r[3])
+        score = 1 / (1 + distance) # Is similarity not distance
 
         if score > best_score:
             # Create a metadata using the most recommended movie
@@ -37,9 +39,9 @@ def get_weights(mode = "smart"):
     """
 
     weights = {
-        "quality": (0.45, 0.20, 0.35),
-        "taste": (0.50, 0.35, 0.15),
-        "smart": (0.55, 0.25, 0.20),
+        "quality": (0.40, 0.15, 0.45),  # priorize rating
+        "taste":   (0.60, 0.30, 0.10),  # priorize similitud + géneros
+        "smart":   (0.65, 0.20, 0.15),  # priorize similitud semántica
     }
     
     # Return weights, default: smart
@@ -55,8 +57,9 @@ def rank_movies(candidates, user_filters=None, user_mode="smart"):
     user_genres = set(user_filters.get("genres", []))
 
     def score(x):
-        # 1. embedding
-        embedding_score = float(x[3])  # Assuming x[3] is the cosine similarity score from the DB
+        # 1. embedding 
+        distance = float(x[3])  # Assuming x[3] it is not distance but the cosine similarity score from the DB. Fewer is best.
+        embedding_score = 1 / (1 + distance)
 
         # 2 genres matching
         movie_genres = set(x[4] or [])
@@ -67,13 +70,13 @@ def rank_movies(candidates, user_filters=None, user_mode="smart"):
             genre_score = 0.5 # neutral
 
         # 3. weighted rating. 
-        weighted_rating = float(x[7])  # Assuming x[7] is the weighted rating from the D
+        weighted_rating = float(x[7])  # Assuming x[7] is the weighted rating from the DB, from 0 to 1
 
         # Weights for each component
         w_emb, w_genres, w_rating = get_weights(user_mode)
 
         final_score = w_emb * embedding_score + w_genres * genre_score + w_rating * weighted_rating
-        print ("\nFINAL SCORE: ", final_score)
+        print (f"\nFINAL SCORE: {final_score} - {x[1]}")
 
         # Final score is a weighted sum of the three components
         return final_score

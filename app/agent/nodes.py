@@ -212,3 +212,63 @@ def semantic_filter_node(state: AgentState) -> AgentState:
         "filters": copy_current_filters,
         "semantic_flag": True
         }
+
+def query_expansion_node(state: AgentState) -> Dict[str, Any]:
+    """
+    This function expands the user query into 3 semantic variants using the LLM.
+    This improve vector search recall by covering more semantic ground.
+    Only runs when action == "recommmend
+    """
+
+    # If the action is not recommend, skip expansion
+    if state.action != "recommend":
+        return {
+            "expansion_flag": True,
+        }
+    
+    prompt = f"""You are a movie search query expansion system. Your task is to rewrite the user's query into 3 different semantic variants to improve movie search results.
+
+        ## STRICT RULES:
+        1. ONLY RETURN JSON - no explanations, no comments
+        2. Each variant must be semantically different, not just paraphrasing
+        3. Keep variants focused on movies
+        4. Use different vocabulary and angles for each variant
+
+        ## RESPONSE FORMAT (ONLY THIS):
+        {{"expanded_queries": ["variant 1", "variant 2", "variant 3"]}}
+
+        ## EXAMPLES:
+
+        User: "emotional sci-fi movies"
+        Response: {{"expanded_queries": ["philosophical science fiction with human drama", "thought-provoking futuristic films about humanity", "existential space stories with deep emotional themes"]}}
+
+        User: "funny movies for a Friday night"
+        Response: {{"expanded_queries": ["light-hearted comedy films for entertainment", "hilarious movies with happy endings", "fun and easy-going films to watch with friends"]}}
+
+        User: "scary horror movies"
+        Response: {{"expanded_queries": ["terrifying psychological horror films", "suspenseful thriller with frightening atmosphere", "dark and disturbing horror with intense scenes"]}}
+
+        ## NOW PROCESS THIS QUERY:
+        User: "{state.query}"
+
+        Remember: ONLY RESPOND WITH THE JSON. NOTHING ELSE.
+    """
+
+    raw_response = call_llm(prompt)
+
+    print(f"\nQUERY EXPANSION RAW RESPONSE: {raw_response}")
+
+    # Parse the response if it is a string
+    if isinstance(raw_response, str):
+        parsed = json.loads(raw_response)
+    else:
+        parsed = raw_response
+
+    expanded = parsed.get("expanded_queries", [])
+
+    print(f"\nEXPANDED QUERIES: {expanded}")
+    
+    return {
+        "expanded_queries": expanded,
+        "expansion_flag": True
+    }

@@ -6,10 +6,17 @@ from app.agent.state import AgentState
 def agent(user_input, filters=None, top_k=5, user_mode="smart"):
     """ This function is the entry point of the LangGraph system (the bridge between the app and the graph)."""
 
+    # Normalize filters to asure that year_from/year_to are in the filters dictionary
+    normalized_filters = {
+        **(filters or {}),
+        "year_from": (filters or {}).get("year_from", 1900),
+        "year_to": (filters or {}).get("year_to", 2100),
+    }
+
     # Input of the graph
     state = AgentState(
         query=user_input,
-        filters=filters,
+        filters=normalized_filters,
         top_k=top_k,
         user_mode=user_mode,
     )
