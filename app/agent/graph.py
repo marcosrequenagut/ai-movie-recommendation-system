@@ -59,7 +59,7 @@ graph.add_edge("recommend", "format_output_node")
 graph.add_edge("explain", "format_output_node")
 graph.add_edge("final_clarify", "format_output_node")
 graph.add_edge("clarify", "router") # This edge is the one who creates the loop in the clarify node
-
+graph.add_edge("semantic_filter", "router") # When this node is executed, it returns to the router and it won't be execute then, it will be skiped. 
 # Final (Execution stops here)
 graph.add_edge("format_output_node", END)
 
@@ -70,7 +70,7 @@ app = graph.compile()
 # Save the graph as a png document to better understand it
 graph_png = app.get_graph().draw_mermaid_png()
 
-output_path = Path(__file__).resolve().parents[2] / "data_processing" / "data" / "graph.png"
+output_path = Path(__file__).resolve().parents[2] / "data_procesing" / "data" / "graph.png"
 output_path.parent.mkdir(parents=True, exist_ok=True)
 
 with open(output_path, "wb") as f:

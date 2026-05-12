@@ -186,7 +186,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
     
     detected_genres_list = detected_genres_dict["detected_genres"] or []
 
-    print(f"\nGENRES LIST UPDATED: {detected_genres_list}")
+    print(f"\nGENRES LIST DETECTED BY THE LLM: {detected_genres_list}")
 
     # Obtain the actual filters
     current_filters = state.filters or {}
@@ -197,7 +197,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
     # Obtain the genres list
     current_genres = copy_current_filters.get("genres") or []
 
-    print(f"\nFINAL CURRENT GENRES LIST UPDATED: {current_genres}")
+    print(f"\nGENRES INTRODUCED BY THE USER: {current_genres}")
 
     # Combine new and old genres list without duplicates
     updated_genres_list = list(set(current_genres + detected_genres_list))
@@ -205,7 +205,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
     # Update the "genres" filter
     copy_current_filters["genres"] = updated_genres_list
 
-    print(f"\nFINAL STATE GENRES LIST UPDATED: {copy_current_filters}")
+    print(f"\nGENRES LLM + GENRES USER: {copy_current_filters}")
 
 
     return {
