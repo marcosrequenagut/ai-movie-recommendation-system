@@ -55,17 +55,17 @@ Then retrieves semantically similar movies from PostgreSQL using pgvector.
 
 Movies are ranked using:
 
-- Embedding similarity
+- Embedding similarity (converted from distance to similarity via `1 / (1 + distance)`)
 - Genre matching
-- Weighted movie rating
+- Weighted movie rating (normalized to 0–1)
 
 The user can choose recommendation modes:
 
 | Mode | Description |
 |---|---|
-| `smart` | Balanced recommendations |
-| `quality` | Prioritize highly rated movies |
-| `taste` | Prioritize genre similarity |
+| `smart` | Prioritizes semantic similarity (weights: 0.65 / 0.20 / 0.15) |
+| `quality` | Prioritizes highly rated movies (weights: 0.40 / 0.15 / 0.45) |
+| `taste` | Prioritizes genre similarity (weights: 0.60 / 0.30 / 0.10) |
 
 ---
 
@@ -83,6 +83,12 @@ The AI agent can:
 
 ```text
 START
+  ↓
+router
+  ↓
+semantic_filter (runs once, controlled by semantic_flag)
+  ↓
+query_expansion (runs once, controlled by expansion_flag)
   ↓
 router
   ↓
@@ -106,6 +112,45 @@ to classify user intent into:
 - `recommend`
 - `explain`
 - `clarify`
+
+---
+
+## Semantic Genre Filter
+
+After the router, a dedicated node uses the LLM to extract hidden genre references from the user's query and automatically adds them to the active filters.
+
+- Detects synonyms and variants (e.g. "sci-fi" → "Science Fiction", "scary" → "Horror")
+- Merges detected genres with any genres explicitly provided by the user
+- Deduplicates the final genre list
+- Only executes once per conversation turn, controlled by `semantic_flag` in the state
+
+### Example
+
+```text
+"Recommend me something scary set in space"
+→ detected genres: ["Horror", "Science Fiction"]
+```
+
+---
+
+## Query Expansion
+
+Before performing the vector search, a dedicated node uses the LLM to rewrite the user's query into 3 semantic variants. Each variant generates its own embedding, resulting in multiple vector searches whose results are merged and deduplicated.
+
+- Improves recall for vague or short queries
+- The original query is always included alongside the expanded variants
+- Deduplication keeps the result with the lowest distance (highest similarity) per movie
+- Only executes when `action == "recommend"` and only once per turn, controlled by `expansion_flag`
+
+### Example
+
+```text
+"emotional sci-fi movies"
+→ "philosophical science fiction with human drama"
+→ "thought-provoking futuristic films about humanity"
+→ "existential space stories with deep emotional themes"
+→ 4 vector searches → merged unique candidates → ranking → top-K results
+```
 
 ---
 
@@ -389,7 +434,9 @@ Main AI recommendation endpoint.
   "top_k": 5,
   "filters": {
     "genres": ["Science Fiction"],
-    "min_rating": 7.0
+    "min_rating": 7.0,
+    "year_from": 1990,
+    "year_to": 2024
   },
   "user_mode": "smart"
 }
@@ -402,8 +449,10 @@ Main AI recommendation endpoint.
   "query": "Recommend emotional sci-fi movies",
   "action": "recommend",
   "movies": [
+    "Her",
     "Interstellar",
     "Arrival",
+    "WALL·E",
     "Blade Runner 2049"
   ]
 }
@@ -439,37 +488,47 @@ Generate explanation for a recommendation.
 ```text
 User Query
     ↓
-Embedding Generation
+Semantic Genre Filter (LLM extracts genres from query)
     ↓
-Vector Search (pgvector)
+Query Expansion (LLM generates 3 semantic variants)
     ↓
-Filtering
+Embedding Generation (one per query variant)
+    ↓
+Multi Vector Search (one search per embedding, results merged)
+    ↓
+Filtering (by genre, rating, year)
     ↓
 Hybrid Ranking
     ↓
-Final Recommendations
+Top-K Final Recommendations
 ```
 
 ---
 
 # Ranking System
 
-The final score combines:
+The final score combines three normalized components (all in 0–1 range):
 
-- Embedding similarity
-- Genre matching
-- Weighted movie rating
+- **Embedding similarity**: converted from pgvector distance using `1 / (1 + distance)`
+- **Genre matching**: ratio of matched genres over requested genres
+- **Weighted rating**: vote average normalized to 0–1
 
 ### Formula
 
 ```text
 Final Score =
-    Embedding Similarity
-  + Genre Matching
-  + Weighted Rating
+    w_embedding  * embedding_similarity
+  + w_genre      * genre_match_score
+  + w_rating     * normalized_rating
 ```
 
-The weights change depending on the selected recommendation mode.
+The weights change depending on the selected recommendation mode:
+
+| Mode | Embedding | Genre | Rating |
+|---|---|---|---|
+| `smart` | 0.65 | 0.20 | 0.15 |
+| `quality` | 0.40 | 0.15 | 0.45 |
+| `taste` | 0.60 | 0.30 | 0.10 |
 
 ---
 
@@ -532,18 +591,6 @@ docker logs ollama
 docker logs movies_postgree
 ```
 
-# COSAS NUEVAS AÑADIDAS QUE HAY QUE METER EN LA SIGUIENTE VERSION DEL README.MD
-1.- HE CREADO UN NUEVO NODO QUE SE EJECUTA SOLO UNA VEZ. LO QUE HACE ES DETECTAR USANDO UN LLM SI EN LA QUERY DEL USUARIO HAY GENEROS DE PELICULAS ESCONDIDOS PARA AÑADIRLOS AL FILTRO. ESOS GENEROS SE HAÑADEN Y NO SE REPITEN NI NADA.
-
-2.- SOLO SE EJECUTA 1 VEZ ESTE NODO, SE ACTIVA MEDIANTE UN FLAG EN ELE STADO. TRAS EL ROUTER SIEMRPE SE EJECUTA Y ENTONCES EL FLAG PASA A SER TRUE. SE HA HECHO ESTO PORQUE EL NODO CLARIFY SI SALE COMO ACTION=CLARIFY VUELVE AL ROUTER Y TRAS EL ROUTER VA EL SEMANTINC_FILTER ENTONCES PARA QUE NO SE EJECUTE 10 VECES EL MISMO FILTRO, SE SALTA TRAS HABERSE EJECUTADO LA 1 VZ
-
-3.- CREACIÓN DE UN NUEVO NODO:
-def query_expansion_node(state: AgentState) -> Dict[str: Any]:
-    """
-    This function expands the user query into 3 semantic variants using the LLM.
-    This improve vector search recall by covering more semantic ground.
-    Only runs when action == "recommmend
-    """
 ---
 
 # Commit Convention
@@ -562,7 +609,7 @@ chore(docker): add postgres service
 - Conversational memory
 - User profiles
 - RAG over movie reviews
-- Better reranking strategies
+- Movie similarity search ("something like Interstellar")
 - Async FastAPI endpoints
 - Redis caching
 - GPU inference

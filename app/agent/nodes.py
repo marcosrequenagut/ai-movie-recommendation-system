@@ -209,8 +209,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
 
 
     return {
-        "filters": copy_current_filters,
-        "semantic_flag": True
+        "filters": copy_current_filters
         }
 
 def query_expansion_node(state: AgentState) -> Dict[str, Any]:
@@ -218,14 +217,7 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
     This function expands the user query into 3 semantic variants using the LLM.
     This improve vector search recall by covering more semantic ground.
     Only runs when action == "recommmend
-    """
-
-    # If the action is not recommend, skip expansion
-    if state.action != "recommend":
-        return {
-            "expansion_flag": True,
-        }
-    
+    """    
     prompt = f"""You are a movie search query expansion system. Your task is to rewrite the user's query into 3 different semantic variants to improve movie search results.
 
         ## STRICT RULES:
@@ -269,6 +261,5 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
     print(f"\nEXPANDED QUERIES: {expanded}")
     
     return {
-        "expanded_queries": expanded,
-        "expansion_flag": True
+        "expanded_queries": expanded
     }
