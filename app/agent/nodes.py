@@ -59,14 +59,43 @@ def clarify_node(state: AgentState) -> Dict[str, Any]:
         "clarify_count": clarify_count}
 
 def format_output_node(state: AgentState) -> Dict[str, Any]:
-    
+
+    # Recover current history (from checkpointer or empty if first call)
+    current_history = state.conversation_history or []
+
+    # Build the new interaction to add
+    new_user_message = {
+        "role": "user",
+        "content": state.query
+    } 
+
+    # Create the message of the LLM in a natural language
+    if state.movies:
+        assistant_content = f"I recommended the following movies: {', '.join(state.movies)}"
+    elif state.message:
+        assistant_content = state.message
+    elif state.explanation:
+        assistant_content = state.explanation
+    else:
+        assistant_content = "No results found."
+
+
+    new_assistant_message = {
+        "role": "assistant",
+        "content": assistant_content
+    }
+
+    # Append new interaction to history
+    updated_history = current_history + [new_user_message, new_assistant_message]
+
     return {
         "query": state.query,
         "action": state.action,
         "movies": state.movies,
         "explanation": getattr(state, "explanation", None), # If the attribute doesn't exist, return None
         "message": getattr(state, "message", None),  # If the attribute doesn't exist, return None
-        "top_k": state.top_k
+        "top_k": state.top_k,
+        "conversation_history": updated_history
     }
 
 def final_clarify_node(state: AgentState) -> Dict[str, Any]:

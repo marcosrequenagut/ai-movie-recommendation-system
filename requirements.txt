@@ -14,3 +14,4 @@ pgvector
 requests==2.31.0
 streamlit
 langgraph
+langgraph-checkpoint-sqlite

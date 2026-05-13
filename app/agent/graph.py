@@ -1,4 +1,5 @@
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.sqlite import SqliteSaver
 from pathlib import Path
 from app.agent.state import AgentState
 from app.agent.router_node import router_node
@@ -12,8 +13,13 @@ from app.agent.nodes import (
     query_expansion_node
 )
 
+# Checkpointer - save the state on the disk between API calls
+DB_PATH = Path(__file__).resolve().parents[2] / "data_procesing"  "data" / "memory.db"
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-# Init graph (all the system works with the same state)
+checkpointer = SqliteSaver.from_conn_string(str(DB_PATH))
+
+# Init the graph (all the system works with the same state)
 graph = StateGraph(AgentState)
 
 # Nodes (each node is a function of IA or logic)
@@ -61,8 +67,8 @@ graph.add_edge("explain", "format_output_node")
 graph.add_edge("final_clarify", "format_output_node")
 graph.add_edge("format_output_node", END) # Final (Execution stops here)
 
-# Compile (turns the graph definition into an executable system)
-app = graph.compile()
+# Compile using the checkpointer
+app = graph.compile(checkpointer=checkpointer)
 
 
 # Save the graph as a png document to better understand it

@@ -70,9 +70,24 @@ def call_llm(prompt: str, temperature: float = 0):
 
     return response.json()["response"]
 
-def decide_action(user_input: str) -> RouterOutput:
+def decide_action(user_input: str, conversation_history: list = None) -> RouterOutput:
 
-    """This function decides which action has to take the Agent by creating a json where the action is indicated."""
+    """
+    This function decides which action has to take the Agent by creating a json where the action is indicated.
+    It uses a conversation_history to upgrade the prompt.
+    """
+
+    # Build conversation contect string for the prompt
+    if conversation_history:
+        history_text = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}"
+            for msg in conversation_history
+        ])
+        content_block = f"""
+        CONVERSATION HISTORY (use this to understant the context of the current request): {history_text}
+        """
+    else:
+        content_block = ""
 
     prompt = f"""
     You are a strict JSON router.
@@ -83,7 +98,8 @@ def decide_action(user_input: str) -> RouterOutput:
 
     1. If the user asks for movie recommendations → action = "recommend"
     2. If the user mentions a specific movie → action = "explain"
-    3. Only if the request is too vague → action = "clarify"
+    3. If the user is refining or adding to a previous recommendation (e.g. "add horror", "only from the 90s", "shorter movies") → action = "recommend"
+    4. Only if the request is too vague and there is no prior content → action = "clarify"
 
     IMPORTANT:
     - DO NOT overuse "clarify"
@@ -114,6 +130,7 @@ def decide_action(user_input: str) -> RouterOutput:
         "message": "I didn't understant your request",
         "rewritten_query: "Recommend sci-fi movies"}} 
 
+    {content_block}
 
     User input:
     {user_input}

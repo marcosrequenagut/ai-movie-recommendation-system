@@ -6,16 +6,27 @@ from typing import List, Optional, Any
 class AgentState(BaseModel):
     """
     This class is what the graph uses internally while executing (LangGraph internal memory)"""
+    # Inputs of the user
     query: str
     filters: Optional[dict] = None
     top_k: int = 5
-    metadata: Optional[Any] = None
-    action: Optional[str] = None
-    movies: List[str] = Field(default_factory=list) # Create a new empty list every time you instantiate the class. Each object gets its own independent list
     user_mode: Optional[str] = "smart"
+
+    # Results of the actual call
+    movies: List[str] = Field(default_factory=list) # Create a new empty list every time you instantiate the class. Each object gets its own independent list
     explanation: Optional[str] = None
     message: Optional[str] = None
+
+    # Metadata
+    metadata: Optional[Any] = None
+    action: Optional[str] = None
+
+    # Clarify control
     clarify_count:  int = 0
-    semantic_flag: bool = False # Necessary when the clarify option is selected. It prevents to reexecute the semantic_filter_node.
-    expansion_flag: bool = False # Necessary when the clarify option is selected. It prevents to reexecute the expansion_filter_node.
+
+    # Query expansion
     expanded_queries: List[str] = Field(default_factory=list)
+
+    # Conversational memory
+    conversation_history: List[dict] = Field(default_factory=list)
+
