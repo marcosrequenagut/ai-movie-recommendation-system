@@ -1,5 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Annotated
+
+def accumulate_history(existing: list, new: list) -> list:
+    """Reducer: increase the historical data between API calls"""
+
+    return(existing or []) + (new or [])
 
 # Create a state model to hold the current state of the agent
 # Standard structure for ALL the nodes
@@ -28,5 +33,5 @@ class AgentState(BaseModel):
     expanded_queries: List[str] = Field(default_factory=list)
 
     # Conversational memory
-    conversation_history: List[dict] = Field(default_factory=list)
+    conversation_history: Annotated[List[dict], accumulate_history] = Field(default_factory=list)
 

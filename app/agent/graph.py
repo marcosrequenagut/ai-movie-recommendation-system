@@ -1,6 +1,7 @@
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pathlib import Path
+import sqlite3
 from app.agent.state import AgentState
 from app.agent.router_node import router_node
 from app.agent.nodes import (
@@ -14,10 +15,12 @@ from app.agent.nodes import (
 )
 
 # Checkpointer - save the state on the disk between API calls
-DB_PATH = Path(__file__).resolve().parents[2] / "data_procesing"  "data" / "memory.db"
+DB_PATH = Path(__file__).resolve().parents[2] / "data_procesing" / "data" / "memory" / "memory.db"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-checkpointer = SqliteSaver.from_conn_string(str(DB_PATH))
+conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+checkpointer = SqliteSaver(conn)
+
 
 # Init the graph (all the system works with the same state)
 graph = StateGraph(AgentState)

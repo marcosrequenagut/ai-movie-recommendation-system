@@ -80,13 +80,10 @@ def format_output_node(state: AgentState) -> Dict[str, Any]:
         assistant_content = "No results found."
 
 
-    new_assistant_message = {
-        "role": "assistant",
-        "content": assistant_content
-    }
-
-    # Append new interaction to history
-    updated_history = current_history + [new_user_message, new_assistant_message]
+    new_message= [
+        {"role": "user", "content": state.query},
+        {"role": "assistant", "content": assistant_content}
+    ]
 
     return {
         "query": state.query,
@@ -95,7 +92,7 @@ def format_output_node(state: AgentState) -> Dict[str, Any]:
         "explanation": getattr(state, "explanation", None), # If the attribute doesn't exist, return None
         "message": getattr(state, "message", None),  # If the attribute doesn't exist, return None
         "top_k": state.top_k,
-        "conversation_history": updated_history
+        "conversation_history": new_message
     }
 
 def final_clarify_node(state: AgentState) -> Dict[str, Any]:
@@ -114,96 +111,77 @@ def semantic_filter_node(state: AgentState) -> AgentState:
         'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction',
         'TV Movie', 'Thriller', 'War', 'Western']
     
-    prompt = f"""You are a movie genre extraction system. Your ONLY task is to identify genres in the user's query and map them to the official genre list provided.
+    # Build conversation context
+    if state.conversation_history:
+        history_text = "\n".join([
+            f"USER: {msg['content']}"
+            for msg in state.conversation_history
+            if msg.get("role") == "user"
+        ])
+        context_block = f"""
+        ## CONVERSATION HISTORY - Previous user requests (use this to understand genre evolution):
+        {history_text}
 
-        ## STRICT RULES (YOU MUST FOLLOW THEM TO THE LETTER):
+        ## CURRENT USER REQUEST:
+        {state.query}
+        """
+    else:
+        context_block = f"""
+            ## USER REQUEST:
+            {state.query}
+        """
 
-        1. **DO NOT INVENT GENRES** - If a genre is not in the official list, DO NOT include it.
-        2. **ONLY RETURN JSON** - Your response MUST be a valid JSON object only.
-        3. **NO EXTRA TEXT** - No explanations, no comments, only JSON.
-        4. **NO EXTRA CAPITALIZATION** - Use EXACTLY the same name as in the official list.
+    print("\nCONTECT BLOCK: ", context_block)
 
-        ## OFFICIAL VALID GENRES LIST:
-        {all_possible_genres}
+    prompt = f"""You are a movie genre extraction system. Your task is to determine which genres should be active RIGHT NOW based on the full conversation context and the current user request.
 
-        ## RECOGNIZED SYNONYMS AND VARIANTS:
+            ## STRICT RULES:
+            1. **DO NOT INVENT GENRES** - Only use genres from the official list
+            2. **ONLY RETURN JSON** - No explanations, no comments
+            3. **READ THE FULL CONTEXT** - Consider what the user wants now, including additions and removals
+            4. **HANDLE MODIFICATIONS** - If the user says "remove X" or "without X", exclude that genre
+            5. **HANDLE ADDITIONS** - If the user says "add X" or "also X", include previous genres plus new ones
 
-        - "Sci-Fi", "Sci Fi", "SciFi", "sci fi", "science fiction" → "Science Fiction"
-        - "Action" → "Action" (any form of action)
-        - "Comedy", "funny", "humor" → "Comedy"
-        - "Horror", "scary", "terror" → "Horror"
-        - "Romance", "romantic", "love" → "Romance"
-        - "Adventure", "adventurous" → "Adventure"
-        - "Animation", "animated", "cartoon" → "Animation"
-        - "Crime", "criminal", "gangster", "mafia" → "Crime"
-        - "Documentary", "doc", "real story" → "Documentary"
-        - "Drama", "dramatic" → "Drama"
-        - "Fantasy", "magical", "magic" → "Fantasy"
-        - "History", "historical" → "History"
-        - "Music", "musical", "singing" → "Music"
-        - "Mystery", "detective", "whodunit" → "Mystery"
-        - "Thriller", "suspense", "suspenseful" → "Thriller"
-        - "War", "military", "battle" → "War"
-        - "Western", "cowboy" → "Western"
-        - "Family", "kids", "children" → "Family"
-        - "TV Movie", "made for TV" → "TV Movie"
+            ## OFFICIAL VALID GENRES LIST:
+            {all_possible_genres}
 
-        ## RESPONSE FORMAT (ONLY THIS, NOTHING ELSE):
+            ## RECOGNIZED SYNONYMS AND VARIANTS:
+            - "Sci-Fi", "sci fi", "science fiction" → "Science Fiction"
+            - "scary", "terror" → "Horror"
+            - "romantic", "love" → "Romance"
+            - "funny", "humor" → "Comedy"
+            - "dramatic" → "Drama"
+            - "suspense", "suspenseful" → "Thriller"
+            - "animated", "cartoon" → "Animation"
+            - "kids", "children" → "Family"
+            - "gangster", "mafia" → "Crime"
+            - "military", "battle" → "War"
+            - "cowboy" → "Western"
+            - "magical", "magic" → "Fantasy"
+            - "detective", "whodunit" → "Mystery"
+            - "historical" → "History"
+            - "musical", "singing" → "Music"
 
-        These are the only 3 possible cases:
+            ## RESPONSE FORMAT:
+            {{"detected_genres": ["Genre1", "Genre2"]}}
 
-        Case 1: You find one or more genres
-        {{"detected_genres": ["Science Fiction", "Action"]}}
+            ## EXAMPLES WITH CONTEXT:
 
-        Case 2: You find NO genres
-        {{"detected_genres": []}}
+            History: USER: emotional adventure movies / ASSISTANT: recommended...
+            Current: "remove adventure and add horror"
+            Response: {{"detected_genres": ["Drama", "Horror"]}}
 
-        Case 3: User mentions a genre NOT in the official list
-        {{"detected_genres": []}}  # DO NOT invent, just empty array
+            History: USER: sci-fi movies / ASSISTANT: recommended...
+            Current: "and also horror"
+            Response: {{"detected_genres": ["Science Fiction", "Horror"]}}
 
-        ## EXAMPLES:
+            History: (empty)
+            Current: "funny animated movies for kids"
+            Response: {{"detected_genres": ["Comedy", "Animation", "Family"]}}
 
-        User: "Recommend me a Sci-Fi movie"
-        Response: {{"detected_genres": ["Science Fiction"]}}
+            {context_block}
 
-        User: "I want a romantic comedy with action"
-        Response: {{"detected_genres": ["Romance", "Comedy", "Action"]}}
-
-        User: "Show me a scary movie about space"
-        Response: {{"detected_genres": ["Horror", "Science Fiction"]}}
-
-        User: "Give me a good film"
-        Response: {{"detected_genres": []}}
-
-        User: "Something like Star Wars"
-        Response: {{"detected_genres": ["Science Fiction"]}}
-
-        User: "A crime drama with a gangster"
-        Response: {{"detected_genres": ["Crime", "Drama"]}}
-
-        User: "Recommend a fantasy movie with dragons"
-        Response: {{"detected_genres": ["Fantasy"]}}
-
-        User: "I want a funny animated film for kids"
-        Response: {{"detected_genres": ["Comedy", "Animation", "Family"]}}
-
-        User: "A western cowboy movie"
-        Response: {{"detected_genres": ["Western"]}}
-
-        User: "A mysterious thriller with suspense"
-        Response: {{"detected_genres": ["Mystery", "Thriller"]}}
-
-        User: "Show me a musical with singing"
-        Response: {{"detected_genres": ["Music"]}}
-
-        User: "A historical war film"
-        Response: {{"detected_genres": ["History", "War"]}}
-
-        ## NOW, PROCESS THE FOLLOWING USER QUERY:
-
-        User query: {state.query}
-
-        Remember: ONLY RESPOND WITH THE JSON. NOTHING ELSE."""
+            Remember: ONLY RESPOND WITH THE JSON. NOTHING ELSE."""
 
     detected_genres_dict = call_llm(prompt=prompt)
     print(f"\nGENRES LIST UPDATED AFTER THE PROMPT: {detected_genres_dict}")

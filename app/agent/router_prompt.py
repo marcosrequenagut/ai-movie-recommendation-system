@@ -99,7 +99,7 @@ def decide_action(user_input: str, conversation_history: list = None) -> RouterO
     1. If the user asks for movie recommendations → action = "recommend"
     2. If the user mentions a specific movie → action = "explain"
     3. If the user is refining or adding to a previous recommendation (e.g. "add horror", "only from the 90s", "shorter movies") → action = "recommend"
-    4. Only if the request is too vague and there is no prior content → action = "clarify"
+    4. Only if the request is too vague and there is no prior conversation_history → action = "clarify"
 
     IMPORTANT:
     - DO NOT overuse "clarify"
