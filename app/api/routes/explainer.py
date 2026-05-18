@@ -9,13 +9,13 @@ def explain_recommendation(data: dict):
 
     state = AgentState(
         query = data["query"],
-        movie = data["movie"],
+        movies= data["movies"],
         metadata = data.get("metadata", {})
     )
 
     explanation  = generate_explanation(state)
 
     return {
-        "movie": state.movie,
+        "movies": state.movies,
         "explanation": explanation
     }

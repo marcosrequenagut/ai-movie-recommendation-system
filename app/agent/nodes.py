@@ -38,15 +38,58 @@ def clarify_node(state: AgentState) -> Dict[str, Any]:
     
     # New prompt to rephrase the query
     new_prompt = f"""
-        The user asked something unclear: {state.query}
+    You are a query disambiguation system for a movie assistant.
 
-        This system only:
-            - recommends movies
-            - explain recommended movies
-        
-        Rewrite the user's request into a clearer movie-related query.
-        Rephrase user's request for movie recommendation or explanations purposes.
-        """
+    The system can only handle TWO actions:
+
+    1. RECOMMEND_MOVIES
+    - The user wants movie suggestions
+    - Example intent: "I want movies like X", "recommend me films", "similar to..."
+
+    2. EXPLAIN_MOVIE
+    - The user wants explanation about a specific movie
+    - Example intent: "why do you recommend Interestellar?"
+
+    ---
+
+    USER INPUT:
+    {state.raw_query}
+
+    ---
+
+    TASK:
+    You MUST:
+    1. Decide ONLY ONE intent: RECOMMEND_MOVIES or EXPLAIN_MOVIE
+    2. Rewrite the query accordingly
+    3. Remove all ambiguity
+    4. Do NOT include both options
+    5. Do NOT use words like "or", "either", "maybe"
+
+    ---
+
+    OUTPUT FORMAT (STRICT):
+
+    INTENT: <RECOMMEND_MOVIES or EXPLAIN_MOVIE>
+    QUERY: <clear rewritten query>
+
+    ---
+
+    EXAMPLES:
+
+    User: "movies like Interstellar or explain Interstellar"
+    Output:
+    INTENT: RECOMMEND_MOVIES
+    QUERY: Recommend movies similar to Interstellar
+
+    User: "what is Interstellar about"
+    Output:
+    INTENT: EXPLAIN_MOVIE
+    QUERY: Explain the plot of Interstellar
+
+    ---
+
+    Now process the user input.
+    """
     
     new_query = call_llm(new_prompt)
     
