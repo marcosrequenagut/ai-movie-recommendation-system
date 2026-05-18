@@ -81,7 +81,7 @@ def format_output_node(state: AgentState) -> Dict[str, Any]:
 
 
     new_message= [
-        {"role": "user", "content": state.query},
+        {"role": "user", "content": state.raw_query},
         {"role": "assistant", "content": assistant_content}
     ]
 
@@ -136,7 +136,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
     prompt = f"""You are a movie genre extraction system. Your task is to determine which genres should be active RIGHT NOW based on the full conversation context and the current user request.
 
             ## STRICT RULES:
-            1. **DO NOT INVENT GENRES** - Only use genres from the official list
+            1. **DO NOT INVENT GENRES** - Only use genres from the official list: {all_possible_genres}
             2. **ONLY RETURN JSON** - No explanations, no comments
             3. **READ THE FULL CONTEXT** - Consider what the user wants now, including additions and removals
             4. **HANDLE MODIFICATIONS** - If the user says "remove X" or "without X", exclude that genre
@@ -195,11 +195,22 @@ def semantic_filter_node(state: AgentState) -> AgentState:
 
     print(f"\nGENRES LIST DETECTED BY THE LLM: {detected_genres_list}")
 
+    # Make sure that only possible generes are in the list
+    valid_genres = [g for g in detected_genres_list if g in all_possible_genres]
+    detected_genres_list = valid_genres
+
     # Obtain the actual filters
     current_filters = state.filters or {}
 
     # Get a copy of the  original filters to not override them
     copy_current_filters = current_filters.copy()
+
+    # Make sure that only possible generes introduced by the user are in the list
+    user_genres = copy_current_filters.get("genres") or []
+    valid_user_genres = [g for g in user_genres if g in all_possible_genres]
+
+    # Final list of genres validated introduced by the user
+    copy_current_filters["genres"] = valid_user_genres
 
     # Obtain the genres list
     current_genres = copy_current_filters.get("genres") or []
@@ -255,8 +266,6 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
 
     raw_response = call_llm(prompt)
 
-    print(f"\nQUERY EXPANSION RAW RESPONSE: {raw_response}")
-
     # Parse the response if it is a string
     if isinstance(raw_response, str):
         parsed = json.loads(raw_response)
@@ -270,3 +279,90 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
     return {
         "expanded_queries": expanded
     }
+
+def contextualize_query_node(state: AgentState) -> Dict[str, Any]:
+    """
+    This node takes the conversation_history, using all the user's queries, and
+    creates a summarized query representing everything the user has requested.
+    If conversation_history contains more than one query, then raw_query and query
+    are different; otherwise, they are the same.
+    """
+
+    print("\nCONVERSATION HISTORY: ", state.conversation_history)
+    
+    # Extract all the queries of the user
+    if state.conversation_history:
+        past_queries = [
+            msg['content'] for msg in state.conversation_history if msg.get("role") == "user"
+        ]
+
+        # Build history iwth past queries + current raw query
+        all_queries = past_queries + [state.raw_query]
+
+        history_query = "\n".join([
+            f"QUERY {i}: {q}" for i, q in enumerate(all_queries, start=1)
+        ])
+        
+    else:
+        all_queries = [state.raw_query]
+        # First call, no history
+        history_query = f"QUERY 1: {all_queries[0]}"
+
+    print(f"\nHISTORY QUERY: {history_query}")
+
+    prompt = f"""
+        You are a conversational query rewriting system for a movie recommendation AI.
+
+        Your task is to analyze the full conversation history and generate a single final query that represents the user's CURRENT intent.
+
+        The conversation history is ordered from oldest query to newest query.
+
+        IMPORTANT RULES:
+
+        1. Prioritize the MOST RECENT user requests over older ones.
+        2. If the user changes preferences, the newest preference replaces the old one.
+        3. Preserve compatible preferences from older queries when they are not contradicted.
+        4. Remove outdated or conflicting preferences.
+        5. Generate ONLY one final rewritten query.
+        6. Do not explain your reasoning.
+        7. Do not return JSON.
+        8. Return ONLY the rewritten query as plain text.
+        9. The rewritten query must be optimized for semantic search and embeddings.
+        10. Make the final intent explicit and descriptive.
+
+        EXAMPLE:
+
+        Conversation:
+        QUERY 1: I want emotional horror movies
+        QUERY 2: Actually replace horror with action
+
+        Output:
+        emotional action movies
+
+        EXAMPLE:
+
+        Conversation:
+        QUERY 1: Recommend emotional sci-fi movies
+        QUERY 2: I want something scarier
+        QUERY 3: I changed my mind, I want something realistic and not sci-fi
+
+        Output:
+        realistic emotional thriller and drama movies without sci-fi elements
+
+        Now rewrite the following conversation into a single final query representing the user's latest intent:
+
+        {history_query}
+    """
+
+    # If there is no previous history, just copy the actual query
+    if len(all_queries) == 1:
+        contextual_query = state.raw_query
+    else:
+        contextual_query = call_llm(prompt=prompt)
+
+    print(f"\nNEW CONTEXTUAL QUERY: {contextual_query}")
+    print(f"RAW QUERY: {state.raw_query}")
+
+    return {
+        "query": contextual_query
+        }

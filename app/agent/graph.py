@@ -11,7 +11,8 @@ from app.agent.nodes import (
     format_output_node,
     final_clarify_node,
     semantic_filter_node,
-    query_expansion_node
+    query_expansion_node,
+    contextualize_query_node
 )
 
 # Checkpointer - save the state on the disk between API calls
@@ -26,6 +27,7 @@ checkpointer = SqliteSaver(conn)
 graph = StateGraph(AgentState)
 
 # Nodes (each node is a function of IA or logic)
+graph.add_node("contextualize", contextualize_query_node)
 graph.add_node("router", router_node)
 graph.add_node("semantic_filter", semantic_filter_node)
 graph.add_node("query_expansion", query_expansion_node)
@@ -35,9 +37,9 @@ graph.add_node("clarify", clarify_node) # Loop to the router until it choses a d
 graph.add_node("final_clarify", final_clarify_node)
 graph.add_node("format_output_node", format_output_node)
 
-# Entry point of the system (we start by the semantic_filter, which will preprocess the input of the user)
-graph.set_entry_point("semantic_filter")
+graph.set_entry_point("contextualize")
 
+graph.add_edge("contextualize", "semantic_filter") 
 graph.add_edge("semantic_filter", "router") # The preprocess is always connected to the router
 
 def router_selector(state: AgentState):

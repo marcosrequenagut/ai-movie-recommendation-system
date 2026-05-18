@@ -20,14 +20,14 @@ def agent(user_input, thread_id, filters=None, top_k=5, user_mode="smart"):
     # We have to reset some characteristics of the state like (movies, explanation, message, clarify_count and message) because the checkpoint saves the values 
     # from the previous result, if we don't reset them, they are going to take the values of the previous call and we don't want this.
     state = AgentState(
-        query=user_input,
+        raw_query=user_input,
         filters=normalized_filters,
         top_k=top_k,
         user_mode=user_mode,
         movies=[],
         explanation=None,
         message=None,
-        calrify_count=0,
+        clarify_count=0,
         expanded_queries=[]
     )
 

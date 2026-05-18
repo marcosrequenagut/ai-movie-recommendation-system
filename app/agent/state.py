@@ -12,7 +12,8 @@ class AgentState(BaseModel):
     """
     This class is what the graph uses internally while executing (LangGraph internal memory)"""
     # Inputs of the user
-    query: str
+    query: Optional[str] = None # This is a contextual query, if a user writes some queries about the same conversation, they will be sumarize and paraphrased here
+    raw_query: str # This is the query of the user when it makes an API call
     filters: Optional[dict] = None
     top_k: int = 5
     user_mode: Optional[str] = "smart"
