@@ -27,3 +27,8 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# SQLite local database
+*.db
+*.db-wal
+*.db-shm
