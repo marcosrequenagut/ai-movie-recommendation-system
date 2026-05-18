@@ -8,7 +8,7 @@ An AI-powered movie recommendation system built with:
 - LangGraph
 - Streamlit
 
-The system combines semantic search, vector embeddings, LLM-based routing, hybrid ranking, and AI-generated explanations to provide intelligent movie recommendations.
+The system combines semantic search, vector embeddings, LLM-based routing, hybrid ranking, conversational memory, and AI-generated explanations to provide intelligent movie recommendations.
 
 ---
 
@@ -27,6 +27,7 @@ The system combines semantic search, vector embeddings, LLM-based routing, hybri
 - [API Endpoints](#api-endpoints)
 - [Recommendation Pipeline](#recommendation-pipeline)
 - [Ranking System](#ranking-system)
+- [Conversational Memory](#conversational-memory)
 - [Docker Services](#docker-services)
 - [Environment Variables](#environment-variables)
 - [Future Improvements](#future-improvements)
@@ -47,6 +48,49 @@ Then retrieves semantically similar movies from PostgreSQL using pgvector.
 
 ```text
 "Recommend emotional sci-fi movies with philosophical themes"
+```
+
+---
+
+## Conversational Memory
+
+The system maintains persistent conversational memory across API calls using LangGraph's checkpointer with SQLite. Each conversation is identified by a `thread_id`, allowing users to refine recommendations across multiple turns.
+
+- State is persisted to disk between calls using `SqliteSaver`
+- Each conversation is identified by a `thread_id`
+- The conversation history accumulates user queries and assistant responses
+- The router uses the full conversation history to understand follow-up requests
+
+### Example
+
+```text
+Call 1: "Recommend emotional sci-fi movies"
+→ ["Her", "Arrival", "WALL·E", "Finch", "Interstellar"]
+
+Call 2 (same thread_id): "add horror and remove sci-fi"
+→ Router understands the context and adjusts filters accordingly
+→ ["Get Out", "Hereditary", "A Desert", "Se7en", "Scream"]
+```
+
+---
+
+## Query Contextualization
+
+Before processing, a dedicated node rewrites the user's current query into a single enriched query that captures the full intent of the conversation so far.
+
+- Reads all previous user queries from the conversation history
+- Uses the LLM to merge and resolve contradictions between past and current preferences
+- Produces one final query optimized for semantic search and embeddings
+- The raw original query is preserved separately and stored in the history to avoid contextual drift
+
+### Example
+
+```text
+QUERY 1: "Recommend emotional sci-fi movies"
+QUERY 2: "I want something scarier"
+QUERY 3: "Actually make it realistic, not sci-fi"
+
+→ Contextualized query: "realistic emotional thriller and drama movies without sci-fi elements"
 ```
 
 ---
@@ -84,17 +128,17 @@ The AI agent can:
 ```text
 START
   ↓
-router
+contextualize_query       ← rewrites query using full conversation history
   ↓
-semantic_filter (runs once, controlled by semantic_flag)
+semantic_filter           ← extracts active genres from context + current query
   ↓
-query_expansion (runs once, controlled by expansion_flag)
+router                    ← classifies intent using query + conversation history
   ↓
-router
+query_expansion           ← generates 3 semantic variants (only for recommend)
   ↓
 recommend / explain / clarify
   ↓
-format_output_node
+format_output_node        ← updates conversation history
   ↓
 END
 ```
@@ -113,34 +157,37 @@ to classify user intent into:
 - `explain`
 - `clarify`
 
+The router receives the full conversation history as context, allowing it to correctly classify follow-up requests like "add horror" or "only from the 90s" as `recommend` actions rather than ambiguous queries.
+
 ---
 
 ## Semantic Genre Filter
 
-After the router, a dedicated node uses the LLM to extract hidden genre references from the user's query and automatically adds them to the active filters.
+A dedicated node uses the LLM to determine which genres should be active based on the full conversation context and the current user request.
 
+- Reads only user messages from the conversation history to understand genre evolution
+- Handles additions ("add horror") and removals ("remove sci-fi") intelligently
+- Validates all detected genres against the official list to prevent hallucinations
 - Detects synonyms and variants (e.g. "sci-fi" → "Science Fiction", "scary" → "Horror")
-- Merges detected genres with any genres explicitly provided by the user
-- Deduplicates the final genre list
-- Only executes once per conversation turn, controlled by `semantic_flag` in the state
 
 ### Example
 
 ```text
-"Recommend me something scary set in space"
-→ detected genres: ["Horror", "Science Fiction"]
+History:  "Recommend emotional sci-fi movies"
+Current:  "remove sci-fi and add horror"
+→ active genres: ["Drama", "Horror"]  ← Science Fiction correctly removed
 ```
 
 ---
 
 ## Query Expansion
 
-Before performing the vector search, a dedicated node uses the LLM to rewrite the user's query into 3 semantic variants. Each variant generates its own embedding, resulting in multiple vector searches whose results are merged and deduplicated.
+Before performing the vector search, a dedicated node uses the LLM to rewrite the contextualized query into 3 semantic variants. Each variant generates its own embedding, resulting in multiple vector searches whose results are merged and deduplicated.
 
 - Improves recall for vague or short queries
-- The original query is always included alongside the expanded variants
+- The contextualized query is always included alongside the expanded variants
 - Deduplication keeps the result with the lowest distance (highest similarity) per movie
-- Only executes when `action == "recommend"` and only once per turn, controlled by `expansion_flag`
+- Only executes when `action == "recommend"`
 
 ### Example
 
@@ -180,9 +227,9 @@ to generate natural language explanations about why a movie was recommended.
           ▼                                 ▼
 ┌──────────────────┐             ┌──────────────────┐
 │   LangGraph AI   │             │ Recommendation   │
-│      Agent       │             │    Pipeline      │
-└──────────────────┘             └──────────────────┘
-                                           │
+│   Agent +        │             │    Pipeline      │
+│   SQLite Memory  │             └──────────────────┘
+└──────────────────┘                       │
                                            ▼
                                 ┌──────────────────┐
                                 │ PostgreSQL +     │
@@ -207,6 +254,7 @@ to generate natural language explanations about why a movie was recommended.
 - PostgreSQL
 - pgvector
 - Pydantic
+- SQLite (conversational memory)
 
 ## AI / Machine Learning
 
@@ -243,6 +291,9 @@ app/
 ├── ui/                 # Streamlit frontend
 │
 data_processing/
+│   └── data/
+│       ├── memory/     # SQLite conversational memory (memory.db)
+│       └── graph.png   # LangGraph visualization
 │
 infra/
 ```
@@ -348,7 +399,7 @@ The system requires the following models:
 
 | Model | Purpose |
 |---|---|
-| `mistral` | Router decision |
+| `mistral` | Router + query contextualization + genre extraction + query expansion |
 | `tinyllama` | Recommendation explanation |
 | `nomic-embed-text` | Embedding generation |
 
@@ -424,7 +475,7 @@ http://localhost:8501
 
 # POST `/agent`
 
-Main AI recommendation endpoint.
+Main AI recommendation endpoint. Supports conversational memory via `thread_id`.
 
 ## Request Example
 
@@ -438,9 +489,12 @@ Main AI recommendation endpoint.
     "year_from": 1990,
     "year_to": 2024
   },
-  "user_mode": "smart"
+  "user_mode": "smart",
+  "thread_id": "my-conversation-1"
 }
 ```
+
+If no `thread_id` is provided, the system generates one automatically and returns it in the response. Use the same `thread_id` in subsequent calls to maintain conversational context.
 
 ## Response Example
 
@@ -454,6 +508,11 @@ Main AI recommendation endpoint.
     "Arrival",
     "WALL·E",
     "Blade Runner 2049"
+  ],
+  "thread_id": "my-conversation-1",
+  "conversation_history": [
+    {"role": "user", "content": "Recommend emotional sci-fi movies"},
+    {"role": "assistant", "content": "I recommended the following movies: Her, Interstellar, Arrival, WALL·E, Blade Runner 2049"}
   ]
 }
 ```
@@ -486,21 +545,66 @@ Generate explanation for a recommendation.
 # Recommendation Pipeline
 
 ```text
-User Query
+User Query (raw_query)
     ↓
-Semantic Genre Filter (LLM extracts genres from query)
+Query Contextualization (LLM merges conversation history into one enriched query)
     ↓
-Query Expansion (LLM generates 3 semantic variants)
+Semantic Genre Filter (LLM determines active genres from context + current query)
     ↓
-Embedding Generation (one per query variant)
+Router (classifies intent using contextualized query + conversation history)
     ↓
-Multi Vector Search (one search per embedding, results merged)
+Query Expansion (LLM generates 3 semantic variants — only for recommend)
+    ↓
+Embedding Generation (one embedding per query variant)
+    ↓
+Multi Vector Search (one search per embedding, results merged and deduplicated)
     ↓
 Filtering (by genre, rating, year)
     ↓
 Hybrid Ranking
     ↓
 Top-K Final Recommendations
+    ↓
+format_output_node (appends interaction to conversation_history)
+```
+
+---
+
+# Conversational Memory
+
+The system uses LangGraph's `SqliteSaver` checkpointer to persist the conversation state between API calls.
+
+## How it works
+
+Each call to `/agent` with a `thread_id` saves the full agent state to a local SQLite database. On the next call with the same `thread_id`, LangGraph automatically recovers the previous state including the `conversation_history`.
+
+## thread_id
+
+The `thread_id` is the identifier of a conversation. The client is responsible for sending the same `thread_id` across multiple calls to maintain context.
+
+```text
+Call 1: thread_id="abc" → no prior state → starts fresh → saves state
+Call 2: thread_id="abc" → recovers state → uses conversation history → saves updated state
+Call 3: thread_id="abc" → recovers state → continues conversation
+```
+
+## conversation_history
+
+The history accumulates raw user queries and assistant responses. Raw queries are stored instead of contextualized ones to avoid contextual drift across multiple turns.
+
+```json
+[
+  {"role": "user", "content": "Recommend emotional sci-fi movies"},
+  {"role": "assistant", "content": "I recommended the following movies: Her, Arrival, WALL·E"},
+  {"role": "user", "content": "add horror and remove sci-fi"},
+  {"role": "assistant", "content": "I recommended the following movies: Get Out, Hereditary, Se7en"}
+]
+```
+
+## SQLite Location
+
+```text
+data_processing/data/memory/memory.db
 ```
 
 ---
@@ -606,16 +710,16 @@ chore(docker): add postgres service
 
 # Future Improvements
 
-- Conversational memory
 - User profiles
 - RAG over movie reviews
 - Movie similarity search ("something like Interstellar")
 - Async FastAPI endpoints
-- Redis caching
+- Redis caching for conversation state
 - GPU inference
 - Evaluation metrics
 - Multi-agent workflows
 - Recommendation feedback loops
+- Frontend conversational UI in Streamlit
 
 ---
 
