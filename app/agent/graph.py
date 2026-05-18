@@ -1,5 +1,7 @@
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.sqlite import SqliteSaver
 from pathlib import Path
+import sqlite3
 from app.agent.state import AgentState
 from app.agent.router_node import router_node
 from app.agent.nodes import (
@@ -9,14 +11,23 @@ from app.agent.nodes import (
     format_output_node,
     final_clarify_node,
     semantic_filter_node,
-    query_expansion_node
+    query_expansion_node,
+    contextualize_query_node
 )
 
+# Checkpointer - save the state on the disk between API calls
+DB_PATH = Path(__file__).resolve().parents[2] / "data_procesing" / "data" / "memory" / "memory.db"
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-# Init graph (all the system works with the same state)
+conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+checkpointer = SqliteSaver(conn)
+
+
+# Init the graph (all the system works with the same state)
 graph = StateGraph(AgentState)
 
 # Nodes (each node is a function of IA or logic)
+graph.add_node("contextualize", contextualize_query_node)
 graph.add_node("router", router_node)
 graph.add_node("semantic_filter", semantic_filter_node)
 graph.add_node("query_expansion", query_expansion_node)
@@ -26,48 +37,43 @@ graph.add_node("clarify", clarify_node) # Loop to the router until it choses a d
 graph.add_node("final_clarify", final_clarify_node)
 graph.add_node("format_output_node", format_output_node)
 
-# Entry point of the system (we start by the router, that is goin to take the decision of what node is going to be executed)
-graph.set_entry_point("router")
+graph.set_entry_point("contextualize")
+
+graph.add_edge("contextualize", "semantic_filter") 
+graph.add_edge("semantic_filter", "router") # The preprocess is always connected to the router
 
 def router_selector(state: AgentState):
     """This function returns the action if it is a valid action, else it returns "clarify"""
 
-    # If the semantic_filter node has not been executed yet, it will be executed. If it has already been executed, it will be skipped.
-    if not state.semantic_flag:
-        return "semantic_filter"
-    
     if state.action == "final_clarify":
         return "final_clarify"
     
     return state.action if state.action in {"recommend", "explain", "clarify"} else "clarify"
 
 # Routing (conditional routing).
-# After the router node runs (user_input -> router_node -> update_state -> take decision -> conditional edge), decide where to go next based on state.action
 # The router_node produce a dictionary (state) where one of the keys is the "action"
 graph.add_conditional_edges(
     "router",
     router_selector,
     {
-        "semantic_filter": "semantic_filter",
-        "recommend": "recommend", # If the action is recommend, it leads to the recommend node
+        "recommend": "query_expansion", # If the action is recommend, it leads to the recommend node
         "explain": "explain", # If the action is explain, it leads to the explain node
         "clarify": "clarify", # If the action is clarify, it leads to the clarify node
         "final_clarify": "final_clarify"
     }
 )
 
-graph.add_edge("semantic_filter", "query_expansion") 
-graph.add_edge("query_expansion", "router") # As query expansion is a decision node, we had to connect it to a decision node like the router node, which knows the action to take (because it was set int eh first router pass)
+graph.add_edge("query_expansion", "recommend") # Query expansion is connected only to the reccommend node, because it will be executed only of the action is "recommend"
+
+graph.add_edge("clarify", "router") # This edge is the one who creates the loop in the clarify node.It always returns to the router node
 
 graph.add_edge("recommend", "format_output_node")
 graph.add_edge("explain", "format_output_node")
 graph.add_edge("final_clarify", "format_output_node")
-graph.add_edge("clarify", "router") # This edge is the one who creates the loop in the clarify node
-
 graph.add_edge("format_output_node", END) # Final (Execution stops here)
 
-# Compile (turns the graph definition into an executable system)
-app = graph.compile()
+# Compile using the checkpointer
+app = graph.compile(checkpointer=checkpointer)
 
 
 # Save the graph as a png document to better understand it

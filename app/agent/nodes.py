@@ -59,14 +59,40 @@ def clarify_node(state: AgentState) -> Dict[str, Any]:
         "clarify_count": clarify_count}
 
 def format_output_node(state: AgentState) -> Dict[str, Any]:
-    
+
+    # Recover current history (from checkpointer or empty if first call)
+    current_history = state.conversation_history or []
+
+    # Build the new interaction to add
+    new_user_message = {
+        "role": "user",
+        "content": state.query
+    } 
+
+    # Create the message of the LLM in a natural language
+    if state.movies:
+        assistant_content = f"I recommended the following movies: {', '.join(state.movies)}"
+    elif state.message:
+        assistant_content = state.message
+    elif state.explanation:
+        assistant_content = state.explanation
+    else:
+        assistant_content = "No results found."
+
+
+    new_message= [
+        {"role": "user", "content": state.raw_query},
+        {"role": "assistant", "content": assistant_content}
+    ]
+
     return {
         "query": state.query,
         "action": state.action,
         "movies": state.movies,
         "explanation": getattr(state, "explanation", None), # If the attribute doesn't exist, return None
         "message": getattr(state, "message", None),  # If the attribute doesn't exist, return None
-        "top_k": state.top_k
+        "top_k": state.top_k,
+        "conversation_history": new_message
     }
 
 def final_clarify_node(state: AgentState) -> Dict[str, Any]:
@@ -85,96 +111,77 @@ def semantic_filter_node(state: AgentState) -> AgentState:
         'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction',
         'TV Movie', 'Thriller', 'War', 'Western']
     
-    prompt = f"""You are a movie genre extraction system. Your ONLY task is to identify genres in the user's query and map them to the official genre list provided.
+    # Build conversation context
+    if state.conversation_history:
+        history_text = "\n".join([
+            f"USER: {msg['content']}"
+            for msg in state.conversation_history
+            if msg.get("role") == "user"
+        ])
+        context_block = f"""
+        ## CONVERSATION HISTORY - Previous user requests (use this to understand genre evolution):
+        {history_text}
 
-        ## STRICT RULES (YOU MUST FOLLOW THEM TO THE LETTER):
+        ## CURRENT USER REQUEST:
+        {state.query}
+        """
+    else:
+        context_block = f"""
+            ## USER REQUEST:
+            {state.query}
+        """
 
-        1. **DO NOT INVENT GENRES** - If a genre is not in the official list, DO NOT include it.
-        2. **ONLY RETURN JSON** - Your response MUST be a valid JSON object only.
-        3. **NO EXTRA TEXT** - No explanations, no comments, only JSON.
-        4. **NO EXTRA CAPITALIZATION** - Use EXACTLY the same name as in the official list.
+    print("\nCONTECT BLOCK: ", context_block)
 
-        ## OFFICIAL VALID GENRES LIST:
-        {all_possible_genres}
+    prompt = f"""You are a movie genre extraction system. Your task is to determine which genres should be active RIGHT NOW based on the full conversation context and the current user request.
 
-        ## RECOGNIZED SYNONYMS AND VARIANTS:
+            ## STRICT RULES:
+            1. **DO NOT INVENT GENRES** - Only use genres from the official list: {all_possible_genres}
+            2. **ONLY RETURN JSON** - No explanations, no comments
+            3. **READ THE FULL CONTEXT** - Consider what the user wants now, including additions and removals
+            4. **HANDLE MODIFICATIONS** - If the user says "remove X" or "without X", exclude that genre
+            5. **HANDLE ADDITIONS** - If the user says "add X" or "also X", include previous genres plus new ones
 
-        - "Sci-Fi", "Sci Fi", "SciFi", "sci fi", "science fiction" → "Science Fiction"
-        - "Action" → "Action" (any form of action)
-        - "Comedy", "funny", "humor" → "Comedy"
-        - "Horror", "scary", "terror" → "Horror"
-        - "Romance", "romantic", "love" → "Romance"
-        - "Adventure", "adventurous" → "Adventure"
-        - "Animation", "animated", "cartoon" → "Animation"
-        - "Crime", "criminal", "gangster", "mafia" → "Crime"
-        - "Documentary", "doc", "real story" → "Documentary"
-        - "Drama", "dramatic" → "Drama"
-        - "Fantasy", "magical", "magic" → "Fantasy"
-        - "History", "historical" → "History"
-        - "Music", "musical", "singing" → "Music"
-        - "Mystery", "detective", "whodunit" → "Mystery"
-        - "Thriller", "suspense", "suspenseful" → "Thriller"
-        - "War", "military", "battle" → "War"
-        - "Western", "cowboy" → "Western"
-        - "Family", "kids", "children" → "Family"
-        - "TV Movie", "made for TV" → "TV Movie"
+            ## OFFICIAL VALID GENRES LIST:
+            {all_possible_genres}
 
-        ## RESPONSE FORMAT (ONLY THIS, NOTHING ELSE):
+            ## RECOGNIZED SYNONYMS AND VARIANTS:
+            - "Sci-Fi", "sci fi", "science fiction" → "Science Fiction"
+            - "scary", "terror" → "Horror"
+            - "romantic", "love" → "Romance"
+            - "funny", "humor" → "Comedy"
+            - "dramatic" → "Drama"
+            - "suspense", "suspenseful" → "Thriller"
+            - "animated", "cartoon" → "Animation"
+            - "kids", "children" → "Family"
+            - "gangster", "mafia" → "Crime"
+            - "military", "battle" → "War"
+            - "cowboy" → "Western"
+            - "magical", "magic" → "Fantasy"
+            - "detective", "whodunit" → "Mystery"
+            - "historical" → "History"
+            - "musical", "singing" → "Music"
 
-        These are the only 3 possible cases:
+            ## RESPONSE FORMAT:
+            {{"detected_genres": ["Genre1", "Genre2"]}}
 
-        Case 1: You find one or more genres
-        {{"detected_genres": ["Science Fiction", "Action"]}}
+            ## EXAMPLES WITH CONTEXT:
 
-        Case 2: You find NO genres
-        {{"detected_genres": []}}
+            History: USER: emotional adventure movies / ASSISTANT: recommended...
+            Current: "remove adventure and add horror"
+            Response: {{"detected_genres": ["Drama", "Horror"]}}
 
-        Case 3: User mentions a genre NOT in the official list
-        {{"detected_genres": []}}  # DO NOT invent, just empty array
+            History: USER: sci-fi movies / ASSISTANT: recommended...
+            Current: "and also horror"
+            Response: {{"detected_genres": ["Science Fiction", "Horror"]}}
 
-        ## EXAMPLES:
+            History: (empty)
+            Current: "funny animated movies for kids"
+            Response: {{"detected_genres": ["Comedy", "Animation", "Family"]}}
 
-        User: "Recommend me a Sci-Fi movie"
-        Response: {{"detected_genres": ["Science Fiction"]}}
+            {context_block}
 
-        User: "I want a romantic comedy with action"
-        Response: {{"detected_genres": ["Romance", "Comedy", "Action"]}}
-
-        User: "Show me a scary movie about space"
-        Response: {{"detected_genres": ["Horror", "Science Fiction"]}}
-
-        User: "Give me a good film"
-        Response: {{"detected_genres": []}}
-
-        User: "Something like Star Wars"
-        Response: {{"detected_genres": ["Science Fiction"]}}
-
-        User: "A crime drama with a gangster"
-        Response: {{"detected_genres": ["Crime", "Drama"]}}
-
-        User: "Recommend a fantasy movie with dragons"
-        Response: {{"detected_genres": ["Fantasy"]}}
-
-        User: "I want a funny animated film for kids"
-        Response: {{"detected_genres": ["Comedy", "Animation", "Family"]}}
-
-        User: "A western cowboy movie"
-        Response: {{"detected_genres": ["Western"]}}
-
-        User: "A mysterious thriller with suspense"
-        Response: {{"detected_genres": ["Mystery", "Thriller"]}}
-
-        User: "Show me a musical with singing"
-        Response: {{"detected_genres": ["Music"]}}
-
-        User: "A historical war film"
-        Response: {{"detected_genres": ["History", "War"]}}
-
-        ## NOW, PROCESS THE FOLLOWING USER QUERY:
-
-        User query: {state.query}
-
-        Remember: ONLY RESPOND WITH THE JSON. NOTHING ELSE."""
+            Remember: ONLY RESPOND WITH THE JSON. NOTHING ELSE."""
 
     detected_genres_dict = call_llm(prompt=prompt)
     print(f"\nGENRES LIST UPDATED AFTER THE PROMPT: {detected_genres_dict}")
@@ -188,11 +195,22 @@ def semantic_filter_node(state: AgentState) -> AgentState:
 
     print(f"\nGENRES LIST DETECTED BY THE LLM: {detected_genres_list}")
 
+    # Make sure that only possible generes are in the list
+    valid_genres = [g for g in detected_genres_list if g in all_possible_genres]
+    detected_genres_list = valid_genres
+
     # Obtain the actual filters
     current_filters = state.filters or {}
 
     # Get a copy of the  original filters to not override them
     copy_current_filters = current_filters.copy()
+
+    # Make sure that only possible generes introduced by the user are in the list
+    user_genres = copy_current_filters.get("genres") or []
+    valid_user_genres = [g for g in user_genres if g in all_possible_genres]
+
+    # Final list of genres validated introduced by the user
+    copy_current_filters["genres"] = valid_user_genres
 
     # Obtain the genres list
     current_genres = copy_current_filters.get("genres") or []
@@ -209,8 +227,7 @@ def semantic_filter_node(state: AgentState) -> AgentState:
 
 
     return {
-        "filters": copy_current_filters,
-        "semantic_flag": True
+        "filters": copy_current_filters
         }
 
 def query_expansion_node(state: AgentState) -> Dict[str, Any]:
@@ -218,14 +235,7 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
     This function expands the user query into 3 semantic variants using the LLM.
     This improve vector search recall by covering more semantic ground.
     Only runs when action == "recommmend
-    """
-
-    # If the action is not recommend, skip expansion
-    if state.action != "recommend":
-        return {
-            "expansion_flag": True,
-        }
-    
+    """    
     prompt = f"""You are a movie search query expansion system. Your task is to rewrite the user's query into 3 different semantic variants to improve movie search results.
 
         ## STRICT RULES:
@@ -256,8 +266,6 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
 
     raw_response = call_llm(prompt)
 
-    print(f"\nQUERY EXPANSION RAW RESPONSE: {raw_response}")
-
     # Parse the response if it is a string
     if isinstance(raw_response, str):
         parsed = json.loads(raw_response)
@@ -269,6 +277,92 @@ def query_expansion_node(state: AgentState) -> Dict[str, Any]:
     print(f"\nEXPANDED QUERIES: {expanded}")
     
     return {
-        "expanded_queries": expanded,
-        "expansion_flag": True
+        "expanded_queries": expanded
     }
+
+def contextualize_query_node(state: AgentState) -> Dict[str, Any]:
+    """
+    This node takes the conversation_history, using all the user's queries, and
+    creates a summarized query representing everything the user has requested.
+    If conversation_history contains more than one query, then raw_query and query
+    are different; otherwise, they are the same.
+    """
+
+    print("\nCONVERSATION HISTORY: ", state.conversation_history)
+    
+    # Extract all the queries of the user
+    if state.conversation_history:
+        past_queries = [
+            msg['content'] for msg in state.conversation_history if msg.get("role") == "user"
+        ]
+
+        # Build history iwth past queries + current raw query
+        all_queries = past_queries + [state.raw_query]
+
+        history_query = "\n".join([
+            f"QUERY {i}: {q}" for i, q in enumerate(all_queries, start=1)
+        ])
+        
+    else:
+        all_queries = [state.raw_query]
+        # First call, no history
+        history_query = f"QUERY 1: {all_queries[0]}"
+
+    print(f"\nHISTORY QUERY: {history_query}")
+
+    prompt = f"""
+        You are a conversational query rewriting system for a movie recommendation AI.
+
+        Your task is to analyze the full conversation history and generate a single final query that represents the user's CURRENT intent.
+
+        The conversation history is ordered from oldest query to newest query.
+
+        IMPORTANT RULES:
+
+        1. Prioritize the MOST RECENT user requests over older ones.
+        2. If the user changes preferences, the newest preference replaces the old one.
+        3. Preserve compatible preferences from older queries when they are not contradicted.
+        4. Remove outdated or conflicting preferences.
+        5. Generate ONLY one final rewritten query.
+        6. Do not explain your reasoning.
+        7. Do not return JSON.
+        8. Return ONLY the rewritten query as plain text.
+        9. The rewritten query must be optimized for semantic search and embeddings.
+        10. Make the final intent explicit and descriptive.
+
+        EXAMPLE:
+
+        Conversation:
+        QUERY 1: I want emotional horror movies
+        QUERY 2: Actually replace horror with action
+
+        Output:
+        emotional action movies
+
+        EXAMPLE:
+
+        Conversation:
+        QUERY 1: Recommend emotional sci-fi movies
+        QUERY 2: I want something scarier
+        QUERY 3: I changed my mind, I want something realistic and not sci-fi
+
+        Output:
+        realistic emotional thriller and drama movies without sci-fi elements
+
+        Now rewrite the following conversation into a single final query representing the user's latest intent:
+
+        {history_query}
+    """
+
+    # If there is no previous history, just copy the actual query
+    if len(all_queries) == 1:
+        contextual_query = state.raw_query
+    else:
+        contextual_query = call_llm(prompt=prompt)
+
+    print(f"\nNEW CONTEXTUAL QUERY: {contextual_query}")
+    print(f"RAW QUERY: {state.raw_query}")
+
+    return {
+        "query": contextual_query
+        }

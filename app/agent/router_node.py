@@ -5,7 +5,10 @@ from typing import Dict, Any
 def router_node(state: AgentState) -> Dict[str, Any]:
     """This node call to the decide_action. It decides the action to take: recommend, explain or clarify."""
     
-    decision = decide_action(state.query)
+    decision = decide_action(
+        user_input = state.query,
+        conversation_history = state.conversation_history
+    )
 
     # Don't return the state directly, we only update the action item.
     # Internally: old_state + {"action":...}

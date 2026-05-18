@@ -7,3 +7,4 @@ class AgentRequest(BaseModel):
     top_k: Optional[int] = 5
     filters: Optional[dict] = None
     user_mode: Optional[str] = "smart"
+    thread_id: Optional[str] = None # It identifies the conversation
