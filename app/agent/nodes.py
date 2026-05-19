@@ -121,12 +121,6 @@ def format_output_node(state: AgentState) -> Dict[str, Any]:
 
     print("\nRECOMMENDED IDS IN FORMAT OUTPUT NODES: ", recommended_ids)
 
-    # Build the new interaction to add
-    new_user_message = {
-        "role": "user",
-        "content": state.query
-    } 
-
     # Create the message of the LLM in a natural language
     if state.movies:
         assistant_content = f"I recommended the following movies: {', '.join(state.movies)}"

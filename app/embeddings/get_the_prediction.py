@@ -14,7 +14,6 @@ def get_reccomended_movies(query, top_k, dict_movie_embeddings=dict_movie_embedd
     
     query_embedding = get_embedding(query)
 
-    old_similarity = 0
     similarity_list = []
     i=0
     for id, embedding in dict_movie_embeddings.items():

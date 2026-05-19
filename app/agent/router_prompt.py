@@ -64,7 +64,7 @@ def call_llm(prompt: str, temperature: float = 0):
             "model": "mistral",
             "prompt": prompt,
             "stream": False,
-            "temperature": 0
+            "temperature": temperature
         }
     )
 
