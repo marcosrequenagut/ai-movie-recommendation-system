@@ -6,6 +6,11 @@ def accumulate_history(existing: list, new: list) -> list:
 
     return(existing or []) + (new or [])
 
+def keep_previous_ids(existing: list, new: list) -> list:
+    """Reducer: keep the previous movies ids of the API call if they exists"""
+
+    return new if new else existing
+
 # Create a state model to hold the current state of the agent
 # Standard structure for ALL the nodes
 class AgentState(BaseModel):
@@ -36,3 +41,5 @@ class AgentState(BaseModel):
     # Conversational memory
     conversation_history: Annotated[List[dict], accumulate_history] = Field(default_factory=list)
 
+    # Save the ids from the recommended movies to use them in the explain node
+    recommended_ids:  Annotated[List[int], keep_previous_ids] = Field(default_factory=list)

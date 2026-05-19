@@ -15,8 +15,9 @@ def get_best_movie(results):
         score = distance # Is similarity not distance
 
         if score > best_score:
-            # Create a metadata using the most recommended movie
+            # Create a metadata using the most recommended movies
             best_movie = {
+                "id": r[0],
                 "title": r[1],
                 "genres": r[4],
                 "overview": r[5],

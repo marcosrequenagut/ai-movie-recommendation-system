@@ -34,3 +34,14 @@ def search_movies_by_embedding(conn, embedding, allowed_ids, top_k):
     cur.close()
 
     return results
+
+def search_movie_by_id(conn, movie_id: int):
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title, overview, genres, release_year, vote_average, popularity
+        FROM movies
+        WHERE id = %s
+    """, [movie_id])
+    result = cur.fetchone()
+    cur.close()
+    return result

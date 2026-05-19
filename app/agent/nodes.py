@@ -8,14 +8,24 @@ import json
 
 
 def recommend_node(state: AgentState) -> Dict[str, Any]:
-    ranked_movies = recommend_pipeline(state)
+    ranked_movies, movies_ids = recommend_pipeline(state)
+    print("\n=== RECOMMEND NODE ===")
+    print("\nMOVIES IDS: ", movies_ids)
     
     print(f"Recommendation result: {ranked_movies}")
-    print(f"state before returning from recommend_node: {state}")
 
-    return {"movies": ranked_movies} # It updates the "movies" key of the old state
+    return {
+        "movies": ranked_movies,
+        "recommended_ids": movies_ids
+        }
 
 def explain_node(state: AgentState) -> Dict[str, Any]:
+    print("\n=== ENTER EXPLAIN ===")
+    print("FULL STATE:")
+    print(state.model_dump())
+
+    print("RECOMMENDED IDS:")
+    print(state.recommended_ids)
     explanation = generate_explanation(state)
     return {
         "explanation": explanation
@@ -104,9 +114,12 @@ def clarify_node(state: AgentState) -> Dict[str, Any]:
         "clarify_count": clarify_count}
 
 def format_output_node(state: AgentState) -> Dict[str, Any]:
-
+    print("\n=== FORMAT OUTPUT ===")
     # Recover current history (from checkpointer or empty if first call)
     current_history = state.conversation_history or []
+    recommended_ids = state.recommended_ids or []
+
+    print("\nRECOMMENDED IDS IN FORMAT OUTPUT NODES: ", recommended_ids)
 
     # Build the new interaction to add
     new_user_message = {
@@ -124,21 +137,25 @@ def format_output_node(state: AgentState) -> Dict[str, Any]:
     else:
         assistant_content = "No results found."
 
-
-    new_message= [
+    new_message = [
         {"role": "user", "content": state.raw_query},
         {"role": "assistant", "content": assistant_content}
     ]
 
-    return {
+    result = {
         "query": state.query,
         "action": state.action,
         "movies": state.movies,
         "explanation": getattr(state, "explanation", None), # If the attribute doesn't exist, return None
         "message": getattr(state, "message", None),  # If the attribute doesn't exist, return None
         "top_k": state.top_k,
-        "conversation_history": new_message
+        "conversation_history": new_message,
+        "recommended_ids": recommended_ids
     }
+
+    print("\nRESULT IN THE OUTPUT NODE: ", result)
+
+    return result
 
 def final_clarify_node(state: AgentState) -> Dict[str, Any]:
     return {
@@ -492,7 +509,7 @@ def intent_node(state: AgentState) -> Dict[str, Any]:
     print(f"\nINTENT DETECTED IN THE INTENT_NODE: {intent}")
 
     # Map intent to the action
-    action = "exaplin" if intent == "explain" else None
+    action = "explain" if intent == "explain" else None
 
     return {
         "action": action

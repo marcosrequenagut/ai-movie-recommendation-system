@@ -44,5 +44,6 @@ def agent(user_input, thread_id, filters=None, top_k=5, user_mode="smart"):
         "movies": result.get("movies", []),
         "filters": result.get("filters", {}),
         "user_mode": result.get("user_mode"),
-        "conversation_history": result.get("conversation_history", []) 
+        "conversation_history": result.get("conversation_history", []) ,
+        "explanation": result.get("explanation")
     }

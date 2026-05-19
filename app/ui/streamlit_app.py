@@ -5,7 +5,7 @@ import requests
 st.title("Movie Recommender 🎬")
 
 user_input = st.text_input("What do you want to watch?")
-top_k = st.slider("Top K", 1, 20, 5)
+top_k = st.slider("Movies to recommend", 1, 20, 5)
 
 # Select the filters
 genres = st.multiselect(
@@ -24,16 +24,16 @@ user_mode = st.segmented_control(
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
 
-if st.button("🔁 Continue previous conversation"):
-    st.session_state.use_thread = True
+# Show current conversation status
+if st.session_state.thread_id:
+    st.info(f"💬 Active conversation: `{st.session_state.thread_id}`")
+    continue_conversation = st.checkbox("Continue this conversation", value=True)
+else:
+    st.info("💬 No active conversation — a new one will be created")
+    continue_conversation = False
 
-if "use_thread" not in st.session_state:
-    st.session_state.use_thread = False
-
-thread_id = None
-
-if st.session_state.use_thread:
-    thread_id = st.session_state.thread_id
+# Decide which thread_id to send
+thread_id = st.session_state.thread_id if continue_conversation else None
 
 # Year filter
 with st.expander("🎞️ Filter by year"):
@@ -54,32 +54,45 @@ with st.expander("🎞️ Filter by year"):
         with col2:
             year_to = st.selectbox("To", years, index=0)
 
-if st.button("Recommend"):
-    response = requests.post(
-        #http://localhost:8000/agent
-        "http://api:8000/agent",
-        json={
-            "query": user_input,
-            "top_k": top_k,
-            "filters": {
-                "genres": genres,
-                "year_from": year_from,
-                "year_to": year_to},
-            "user_mode": user_mode,
-            "trhead_id": thread_id
-        }
-    )
-
-    data = response.json()
-    movies = data.get("movies", [])
-    st.session_state.thread_id = data.get("thread_id")
-
-    if movies:
-        st.subheader("🍿 Recommended Movies")
-
-        for i, movie in enumerate(movies, start=1):
-            st.markdown(f"**{i}. 🎬 {movie}**")
-
+if st.button("Search"):
+    if not user_input:
+        st.warning("Please enter a query first")
     else:
-        st.warning("No movies found")
+        response = requests.post(
+            #http://localhost:8000/agent
+            "http://api:8000/agent",
+            json={
+                "query": user_input,
+                "top_k": top_k,
+                "filters": {
+                    "genres": genres,
+                    "year_from": year_from,
+                    "year_to": year_to},
+                "user_mode": user_mode,
+                "thread_id": thread_id
+            }
+        )
+
+        data = response.json()
+
+        # Save the thread_id from response for next call
+        st.session_state.thread_id = data.get("thread_id")
+
+        movies = data.get("movies", [])
+        explanation = data.get("explanation")
+        print("\nEXPLANATION IN THE STREMALIT APP: ", explanation)
+        action = data.get("action")
+
+        if action == "explain" and explanation:
+            st.subheader("💡 Explanation")
+            st.write(explanation)
+
+        elif movies:
+            st.subheader("🍿 Recommended Movies")
+
+            for i, movie in enumerate(movies, start=1):
+                st.markdown(f"**{i}. 🎬 {movie}**")
+
+        else:
+            st.warning("No movies found")
 

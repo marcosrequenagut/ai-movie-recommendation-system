@@ -33,7 +33,8 @@ def agent_chat(data: AgentRequest):
         "filters": result.get("filters", {}),
         "user_mode": result.get("user_mode"),
         "thread_id": thread_id, # Return to the client to use it, if he wants to continue the same conversation
-        "conversation_history": result.get("conversation_history", [])
+        "conversation_history": result.get("conversation_history", []),
+        "explanation": result.get("explanation")
     }
 
 
