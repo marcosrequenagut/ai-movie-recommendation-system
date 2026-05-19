@@ -17,7 +17,9 @@ def recommend_node(state: AgentState) -> Dict[str, Any]:
 
 def explain_node(state: AgentState) -> Dict[str, Any]:
     explanation = generate_explanation(state)
-    return {"explanation": explanation}
+    return {
+        "explanation": explanation
+        }
 
 def clarify_node(state: AgentState) -> Dict[str, Any]:
     """This function, rewrites the user query into a cleare version for the router.
@@ -409,3 +411,89 @@ def contextualize_query_node(state: AgentState) -> Dict[str, Any]:
     return {
         "query": contextual_query
         }
+
+
+def intent_node(state: AgentState) -> Dict[str, Any]:
+    """
+    Lightweight intent classifier that detects ONLY if the user wants an explanation.
+    Uses raw_query without any conversation history to avoid contamination.
+    If explain → goes directly to explain_node skipping contextualization.
+    If other  → continues to contextualize_query → semantic_filter → router.
+    """
+
+    prompt = f"""You are a strict intent classifier for a movie recommendation system.
+
+    ## YOUR ONLY TASK:
+    Decide if the user wants an EXPLANATION about a specific movie or recommendation.
+
+    ## CLASSIFY AS "explain" IF:
+    - The user asks why a movie was recommended
+    - The user asks for details or information about a specific movie
+    - The user asks to elaborate on a previous recommendation
+    - The user mentions a specific movie title and asks something about it
+
+    ## CLASSIFY AS "other" IF:
+    - The user asks for movie recommendations (new or refined)
+    - The user wants to add, remove or change genres/preferences
+    - The user asks something unrelated to a specific movie explanation
+
+    ## STRICT RULES:
+    1. ONLY return JSON, no extra text
+    2. Analyze ONLY the current message, ignore any context
+    3. When in doubt, classify as "other"
+
+    ## RESPONSE FORMAT:
+    {{"intent": "explain"}} or {{"intent": "other"}}
+
+    ## EXAMPLES:
+
+    User: "why did you recommend Beetlejuice?"
+    Response: {{"intent": "explain"}}
+
+    User: "tell me more about Interstellar"
+    Response: {{"intent": "explain"}}
+
+    User: "what makes Her a good pick?"
+    Response: {{"intent": "explain"}}
+
+    User: "explain that last recommendation"
+    Response: {{"intent": "explain"}}
+
+    User: "add horror to my recommendations"
+    Response: {{"intent": "other"}}
+
+    User: "recommend me sci-fi movies"
+    Response: {{"intent": "other"}}
+
+    User: "only from the 90s"
+    Response: {{"intent": "other"}}
+
+    User: "why not something more recent?"
+    Response: {{"intent": "other"}}
+
+    ## USER MESSAGE:
+    "{state.raw_query}"
+
+    Remember: ONLY return the JSON. Nothing else."""
+
+    raw_llm_response = call_llm(prompt=prompt)
+
+    # Parse the response
+    if isinstance(raw_llm_response, str):
+        try:
+            parsed = json.loads(raw_llm_response)
+        except Exception:
+            # Fallback to other if parsing fails
+            print(f"\n\n\nFAILED INTENT_NODE PARSE, RETURNING 'OTHER' AS THE DEFAULT INTENTION")
+            parsed = {"intent":"other"}
+
+    intent = parsed.get("intent", "other")
+
+    print(f"\nINTENT DETECTED IN THE INTENT_NODE: {intent}")
+
+    # Map intent to the action
+    action = "exaplin" if intent == "explain" else None
+
+    return {
+        "action": action
+    }

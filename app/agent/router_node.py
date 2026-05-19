@@ -3,10 +3,10 @@ from app.agent.router_prompt import decide_action
 from typing import Dict, Any
 
 def router_node(state: AgentState) -> Dict[str, Any]:
-    """This node call to the decide_action. It decides the action to take: recommend, explain or clarify."""
+    """This node call to the decide_action. It decides the action to take: recommend or clarify."""
     
     decision = decide_action(
-        user_input = state.query,
+        user_input = state.query, # This is the contextualized query
         conversation_history = state.conversation_history
     )
 

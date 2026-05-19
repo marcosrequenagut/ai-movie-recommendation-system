@@ -92,14 +92,13 @@ def decide_action(user_input: str, conversation_history: list = None) -> RouterO
     prompt = f"""
     You are a strict JSON router.
 
-    You MUST choose ONE action: "recommend", "explain", or "clarify".
+    You MUST choose ONE action: "recommend" or "clarify".
 
     Decision rules (apply in order):
 
     1. If the user asks for movie recommendations → action = "recommend"
-    2. If the user mentions a specific movie → action = "explain"
-    3. If the user is refining or adding to a previous recommendation (e.g. "add horror", "only from the 90s", "shorter movies") → action = "recommend"
-    4. Only if the request is too vague and there is no prior conversation_history → action = "clarify"
+    2. If the user is refining or adding to a previous recommendation (e.g. "add horror", "only from the 90s", "shorter movies") → action = "recommend"
+    3. Only if the request is too vague and there is no prior conversation_history → action = "clarify"
 
     IMPORTANT:
     - DO NOT overuse "clarify"
@@ -116,9 +115,6 @@ def decide_action(user_input: str, conversation_history: list = None) -> RouterO
 
     User: "Recommend a sci-fi movie"
     Output: {{"action": "recommend"}}
-
-    User: "What is Interstellar about?"
-    Output: {{"action": "explain"}}
 
     If action = clarify, you MUST include:
     - message: explanation to the user

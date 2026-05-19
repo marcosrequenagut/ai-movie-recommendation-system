@@ -12,7 +12,7 @@ def get_best_movie(results):
     for r in results:
 
         distance = float(r[3])
-        score = 1 / (1 + distance) # Is similarity not distance
+        score = distance # Is similarity not distance
 
         if score > best_score:
             # Create a metadata using the most recommended movie
@@ -58,8 +58,8 @@ def rank_movies(candidates, user_filters=None, user_mode="smart"):
 
     def score(x):
         # 1. embedding 
-        distance = float(x[3])  # Assuming x[3] it is not distance but the cosine similarity score from the DB. Fewer is best.
-        embedding_score = 1 / (1 + distance)
+        embedding_score = float(x[3])  # Assuming x[3] it is not distance but the cosine similarity score from the DB.
+        print(F"EMBEDDING SCORE: {embedding_score} - {x[1]}")
 
         # 2 genres matching
         movie_genres = set(x[4] or [])
@@ -76,7 +76,7 @@ def rank_movies(candidates, user_filters=None, user_mode="smart"):
         w_emb, w_genres, w_rating = get_weights(user_mode)
 
         final_score = w_emb * embedding_score + w_genres * genre_score + w_rating * weighted_rating
-        print (f"\nFINAL SCORE: {final_score} - {x[1]}")
+        print (f"FINAL SCORE: {final_score} - {x[1]} \n")
 
         # Final score is a weighted sum of the three components
         return final_score

@@ -41,6 +41,7 @@ def retrieve_movies_multi(queries: list, top_k=5, allowed_ids=None):
     """
 
     conn = get_connection()
+    internal_top = top_k * 5
 
     try:
         seen_ids = {} # id -> best result (lowest distance = x[3])
@@ -54,7 +55,7 @@ def retrieve_movies_multi(queries: list, top_k=5, allowed_ids=None):
                 conn=conn,
                 embedding=embedding,
                 allowed_ids=allowed_ids,
-                top_k=top_k
+                top_k=internal_top
             )
 
             # Deduplicates keeping best distance per movie

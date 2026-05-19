@@ -12,7 +12,8 @@ from app.agent.nodes import (
     final_clarify_node,
     semantic_filter_node,
     query_expansion_node,
-    contextualize_query_node
+    contextualize_query_node,
+    intent_node,
 )
 
 # Checkpointer - save the state on the disk between API calls
@@ -27,6 +28,7 @@ checkpointer = SqliteSaver(conn)
 graph = StateGraph(AgentState)
 
 # Nodes (each node is a function of IA or logic)
+graph.add_node("intent", intent_node)
 graph.add_node("contextualize", contextualize_query_node)
 graph.add_node("router", router_node)
 graph.add_node("semantic_filter", semantic_filter_node)
@@ -37,7 +39,23 @@ graph.add_node("clarify", clarify_node) # Loop to the router until it choses a d
 graph.add_node("final_clarify", final_clarify_node)
 graph.add_node("format_output_node", format_output_node)
 
-graph.set_entry_point("contextualize")
+graph.set_entry_point("intent")
+
+def intent_selector(state: AgentState) -> str:
+    """Decides if it is goin to explain something or it just continue to the normal pipeline, the normal way."""
+    if state.action == "explain":
+        return "explain"
+    return "other"
+
+# This conditional edge is useful to determine whether to chose directly the explain path or the normal path (complete pipeline)
+graph.add_conditional_edges(
+    "intent",
+    intent_selector,
+    {
+        "explain": "explain", # Jump out all the contextualisation and goes directly to the explain node
+        "other": "contextualize"
+    }
+) 
 
 graph.add_edge("contextualize", "semantic_filter") 
 graph.add_edge("semantic_filter", "router") # The preprocess is always connected to the router
@@ -57,14 +75,12 @@ graph.add_conditional_edges(
     router_selector,
     {
         "recommend": "query_expansion", # If the action is recommend, it leads to the recommend node
-        "explain": "explain", # If the action is explain, it leads to the explain node
         "clarify": "clarify", # If the action is clarify, it leads to the clarify node
         "final_clarify": "final_clarify"
     }
 )
 
 graph.add_edge("query_expansion", "recommend") # Query expansion is connected only to the reccommend node, because it will be executed only of the action is "recommend"
-
 graph.add_edge("clarify", "router") # This edge is the one who creates the loop in the clarify node.It always returns to the router node
 
 graph.add_edge("recommend", "format_output_node")
