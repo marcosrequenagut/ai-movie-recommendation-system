@@ -1,6 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any, Annotated
 
+# Usually, in LangGraph, the state between nodes are inmutable. To change a state, we use reduce functions.
+# This functions says to the system, if there is a value in the state, and another new one arrives, 
+# how should i combine them? In the history case, we append them and in the ids case, we keep the 
+# existing one, if the new one arrives but it is None, we keep the old state.
+
 def accumulate_history(existing: list, new: list) -> list:
     """Reducer: increase the historical data between API calls"""
 

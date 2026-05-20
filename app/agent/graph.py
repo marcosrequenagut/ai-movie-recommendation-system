@@ -66,7 +66,7 @@ def router_selector(state: AgentState):
     if state.action == "final_clarify":
         return "final_clarify"
     
-    return state.action if state.action in {"recommend", "explain", "clarify"} else "clarify"
+    return state.action if state.action in {"recommend", "clarify"} else "clarify"
 
 # Routing (conditional routing).
 # The router_node produce a dictionary (state) where one of the keys is the "action"

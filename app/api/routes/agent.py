@@ -15,7 +15,7 @@ def agent_chat(data: AgentRequest):
     """
 
     # If not thread_id provided, generate one (new conversation). It is important to indicate to the client to insert the conversational id if he wants to continue with the previous conversation.
-    thread_id = data.thread_id or (uuid.uuid4())
+    thread_id = data.thread_id or str((uuid.uuid4()))
     result = agent(
         user_input = data.query,
         top_k = data.top_k,
